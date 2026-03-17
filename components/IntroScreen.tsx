@@ -14,7 +14,7 @@ export default function IntroScreen({ onStart }: { onStart: () => void }) {
                 <hr className="border-t border-slate-100 mt-6 mb-6" />
                 <div className="inline-flex gap-3 flex-wrap">
                     <span className="text-xs bg-slate-50 border border-slate-200 rounded-full px-3 py-1 text-slate-500">
-                        ⏱ 3 minutes
+                        ⏱ 5-6 minutes
                     </span>
                     <span className="text-xs bg-slate-50 border border-slate-200 rounded-full px-3 py-1 text-slate-500">
                         ~16 questions
