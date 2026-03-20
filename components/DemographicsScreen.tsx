@@ -10,7 +10,9 @@ export interface DemographicsAnswers {
 }
 
 interface DemographicsScreenProps {
-    onSubmit: (answers: DemographicsAnswers) => void;
+    initialValues: DemographicsAnswers;
+    onUpdate: (updates: Partial<DemographicsAnswers>) => void;
+    onSubmit: () => void;
 }
 
 const FIELD_OPTIONS = [
@@ -34,11 +36,8 @@ const EXPERIENCE_OPTIONS = [
 
 const FREQUENCY_OPTIONS = ["Daily", "A few times a week", "A few times a month", "Rarely"];
 
-export default function DemographicsScreen({ onSubmit }: DemographicsScreenProps) {
-    const [fieldGroup, setFieldGroup] = useState("");
-    const [researchExperience, setResearchExperience] = useState("");
-    const [readingFrequency, setReadingFrequency] = useState("");
-    const [priorInterviewName, setPriorInterviewName] = useState("");
+export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }: DemographicsScreenProps) {
+    const { fieldGroup, researchExperience, readingFrequency, priorInterviewName } = initialValues;
     const [error, setError] = useState(false);
 
     function handleSubmit() {
@@ -46,7 +45,7 @@ export default function DemographicsScreen({ onSubmit }: DemographicsScreenProps
             setError(true);
             return;
         }
-        onSubmit({ fieldGroup, researchExperience, readingFrequency, priorInterviewName });
+        onSubmit();
     }
 
     return (
@@ -64,7 +63,7 @@ export default function DemographicsScreen({ onSubmit }: DemographicsScreenProps
                     <select
                         value={fieldGroup}
                         onChange={(e) => {
-                            setFieldGroup(e.target.value);
+                            onUpdate({ fieldGroup: e.target.value });
                             setError(false);
                         }}
                         className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 bg-white focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm appearance-none"
@@ -88,7 +87,7 @@ export default function DemographicsScreen({ onSubmit }: DemographicsScreenProps
                             <button
                                 key={option}
                                 onClick={() => {
-                                    setResearchExperience(option);
+                                    onUpdate({ researchExperience: option });
                                     setError(false);
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${researchExperience === option
@@ -112,7 +111,7 @@ export default function DemographicsScreen({ onSubmit }: DemographicsScreenProps
                             <button
                                 key={option}
                                 onClick={() => {
-                                    setReadingFrequency(option);
+                                    onUpdate({ readingFrequency: option });
                                     setError(false);
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${readingFrequency === option
@@ -137,7 +136,7 @@ export default function DemographicsScreen({ onSubmit }: DemographicsScreenProps
                     <input
                         type="text"
                         value={priorInterviewName}
-                        onChange={(e) => setPriorInterviewName(e.target.value)}
+                        onChange={(e) => onUpdate({ priorInterviewName: e.target.value })}
                         placeholder="Your name"
                         className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
                     />

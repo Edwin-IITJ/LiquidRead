@@ -12,6 +12,8 @@ import ReflectionScreen, { ReflectionAnswers } from "./ReflectionScreen";
 import DemographicsScreen, { DemographicsAnswers } from "./DemographicsScreen";
 import ThankYou from "./ThankYou";
 import IntroScreen from "./IntroScreen";
+ 
+const STORAGE_KEY = "mtp-survey-progress";
 
 const initialState: QuizState = {
     appState: "intro",
@@ -36,10 +38,28 @@ export default function QuizApp() {
     const [state, setState] = useState<QuizState>(initialState);
 
     useEffect(() => {
-        if (typeof window !== "undefined" && localStorage.getItem("mtp-survey-done") === "true") {
-            setState((s) => ({ ...s, appState: "thankyou" }));
+        if (typeof window !== "undefined") {
+            if (localStorage.getItem("mtp-survey-done") === "true") {
+                setState((s) => ({ ...s, appState: "thankyou" }));
+            } else {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        setState(parsed);
+                    } catch (e) {
+                        console.error("Failed to parse saved survey state", e);
+                    }
+                }
+            }
         }
     }, []);
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && state.appState !== "thankyou" && state.appState !== "intro") {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+    }, [state]);
 
     const currentQuestion = questions[state.progressIndex];
 
@@ -138,6 +158,7 @@ export default function QuizApp() {
         await submitToSheet(payload);
         if (typeof window !== "undefined") {
             localStorage.setItem("mtp-survey-done", "true");
+            localStorage.removeItem(STORAGE_KEY);
         }
         setState((s) => ({ ...s, appState: "thankyou" }));
     }
@@ -175,9 +196,18 @@ export default function QuizApp() {
     }
 
     if (state.appState === "demographics") {
-        return <DemographicsScreen onSubmit={(answers: DemographicsAnswers) => {
-            setState(s => ({ ...s, ...answers, appState: "questions" }));
-        }} />;
+        return (
+            <DemographicsScreen
+                initialValues={{
+                    fieldGroup: state.fieldGroup,
+                    researchExperience: state.researchExperience,
+                    readingFrequency: state.readingFrequency,
+                    priorInterviewName: state.priorInterviewName,
+                }}
+                onUpdate={(updates) => setState((s) => ({ ...s, ...updates }))}
+                onSubmit={() => setState((s) => ({ ...s, appState: "questions" }))}
+            />
+        );
     }
 
     if (state.appState === "intro") {
