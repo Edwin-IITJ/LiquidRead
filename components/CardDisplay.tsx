@@ -633,7 +633,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         if (hasCalledRef.current) return;
         hasCalledRef.current = true;
         generateCardContent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -665,7 +665,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         // if original was B or C -> show A; if original was A -> show C
         const nextCard: CardType = (cardType === "B" || cardType === "C") ? "A" : "C";
         setAlternateCardType(nextCard);
-        
+
         // Reset view state for the new card
         setLayer(0);
         setMaxRevealedLayer(0);
@@ -673,7 +673,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         setShowAlternatePrompt(false);
         setIsShowingAlternate(true);
         setAlternateRating("");
-        
+
         // Trigger fade in animation again
         setTimeout(() => setShowCard(true), 50);
     }
@@ -734,8 +734,8 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
     }
 
     return (
-        <div className="flex-1 w-full h-full p-8 flex flex-col items-center overflow-y-auto">
-                
+        <div className="flex-1 w-full h-full px-4 py-6 md:p-8 flex flex-col items-center overflow-y-auto">
+
             {isFallback && (
                 <div className="bg-amber-50 text-amber-800 text-sm font-medium px-4 py-3 rounded-lg text-center mb-6 border border-amber-200 fade-in max-w-[480px] w-full">
                     Showing a sample card — personalised version unavailable right now.
@@ -743,11 +743,11 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             )}
 
             {showCard && (
-                <div className="w-[480px] shrink-0 rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-4 p-5 scale-fade-in mb-8">
-                    
+                <div className="w-full max-w-[480px] shrink-0 rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-4 p-5 scale-fade-in mb-8">
+
                     {/* 1. Context text */}
                     <p className="text-[13px] text-slate-500 italic">
-                        {isShowingAlternate 
+                        {isShowingAlternate
                             ? "Here is the alternate version."
                             : "Based on your responses, here's how this paper was framed for someone like you."}
                     </p>
@@ -761,13 +761,12 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                                 <button
                                     key={i}
                                     onClick={() => isRevealed && setLayer(i)}
-                                    className={`shrink-0 text-xs font-semibold px-4 py-1.5 rounded-full transition-all ${
-                                        isActive
-                                            ? "bg-slate-900 text-white"
-                                            : isRevealed
+                                    className={`shrink-0 text-xs font-semibold px-4 py-1.5 rounded-full transition-all ${isActive
+                                        ? "bg-slate-900 text-white"
+                                        : isRevealed
                                             ? "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                                             : "bg-slate-100/50 text-slate-400 cursor-default opacity-70"
-                                    }`}
+                                        }`}
                                 >
                                     {l.label}
                                 </button>
