@@ -99,7 +99,7 @@ export const questions: Question[] = [
     },
     {
         id: 'q8',
-        text: 'What field or topic are you most interested in right now? (1–3 words is fine)',
+        text: 'What\'s one topic or field you\'re curious about right now?',
         type: 'text',
     },
 ];

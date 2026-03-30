@@ -43,6 +43,8 @@ export interface QuizState {
   priorInterviewName: string;
   alternateCardShown: CardType | null;
   alternateCardRating: string;
+  paperTitle: string;
+  generatedCardText: string;
 }
 
 export interface SheetPayload {

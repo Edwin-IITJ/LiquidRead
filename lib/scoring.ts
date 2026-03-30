@@ -1,6 +1,6 @@
 import { Answer, CardType } from '@/types/quiz';
 
-const MAX_RAW_SCORE = 18; // Q1=2, Q2=2, Q3=2, Q4=2, Q5=3, Q6=3, Q7=2 = 18 total
+const MAX_RAW_SCORE = 16;
 
 export interface ScoringResult {
     rawScore: number;
@@ -22,7 +22,7 @@ export function calculateScore(answers: Record<string, Answer>): ScoringResult {
     let cardShown: CardType;
     if (normalisedScore <= 3.75) {
         cardShown = 'A';
-    } else if (normalisedScore <= 7.5) {
+    } else if (normalisedScore <= 6.5) {
         cardShown = 'B';
     } else {
         cardShown = 'C';

@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CardType, CalibrationResponse } from "@/types/quiz";
 
 interface CardDisplayProps {
     cardType: CardType;
     fieldGroup?: string;
-    onProceed: (response: CalibrationResponse, alternateShown: CardType | null, alternateRating: string) => void;
+    readingComfort?: string;
+    readingGoal?: string;
+    timeAvailable?: string;
+    trustAnchor?: string;
+    researchInterest?: string;
+    confusionResponse?: string;
+    normalisedScore?: number;
+    onProceed: (response: CalibrationResponse, alternateShown: CardType | null, alternateRating: string, paperTitle: string, generatedCardText: string) => void;
 }
 
 // ─── Card Content ────────────────────────────────────────────────────────────
@@ -15,134 +22,68 @@ const DEFAULT_PAPER = {
     A: {
         maxLayer: 2,
         layers: [
-            // Layer 0 — Preview
             {
                 label: "Preview",
-                headline:
-                    "Your body doesn't age gradually. It ages in sudden bursts, and scientists just found out when.",
-                body: "Most people assume the body slowly wears down over the years. A Stanford study just proved that's wrong, and it pinpointed two specific ages when your biology shifts dramatically.",
+                headline: "Your body doesn't age gradually. It ages in sudden bursts, and scientists just found out when.",
+                body: "Most people assume the body slowly wears down over the years. A Stanford study just proved that's wrong, and it pinpointed two specific ages when your biology shifts dramatically."
             },
-            // Layer 1 — Story
             {
                 label: "Story",
                 headline: null,
-                body: `Researchers tracked 108 people for up to 7 years, regularly collecting samples of blood, skin, gut bacteria, and more. When they analysed over 135,000 different molecules inside these people's bodies, something surprising showed up: 81% of those molecules don't change gradually with age. They spike or crash in sudden windows.
-
-Two windows stood out:
-
-Around age 44: Your body's ability to process alcohol, fats, and caffeine all shifted significantly. This might be why hangovers get worse in your 40s — it's not in your head. Your skin and muscle tissue also begin changing around this time.
-
-Around age 60: A second, larger wave hits. The immune system weakens, kidney function begins to dip, and blood sugar regulation changes — increasing risk for diabetes and heart disease.
-
-Interestingly, these patterns showed up in both men and women. So it's not just menopause causing the mid-40s shift — something bigger is happening in everyone.`,
+                body: "Researchers tracked 108 people for up to 7 years, regularly collecting samples of blood, skin, gut bacteria, and more. When they analysed over 135,000 different molecules inside these people's bodies, something surprising showed up: 81% of those molecules don't change gradually with age. They spike or crash in sudden windows.\n\nTwo windows stood out:\n\nAround age 44: Your body's ability to process alcohol, fats, and caffeine all shifted significantly. This might be why hangovers get worse in your 40s. Your skin and muscle tissue also begin changing around this time.\n\nAround age 60: A second, larger wave hits. The immune system weakens, kidney function begins to dip, and blood sugar regulation changes, increasing risk for diabetes and heart disease.\n\nInterestingly, these patterns showed up in both men and women. So it's not just menopause causing the mid-40s shift, something bigger is happening in everyone."
             },
-            // Layer 2 — How they found this
             {
-                label: "How they found this",
+                label: "How they found it",
                 headline: null,
-                body: `The team didn't just take blood samples — they collected stool, skin swabs, saliva, and nasal samples repeatedly over years, building one of the most comprehensive biological portraits of aging ever assembled. They tracked molecules across every layer of biology: genes being switched on and off, proteins, fats, metabolites, gut bacteria, skin bacteria. Then they looked for patterns in when things changed — and the two bursts emerged clearly across all of it.
-
-Source: Nature Aging, Stanford Medicine, August 2024
-Authors: Xiaotao Shen, Chuchu Wang, Michael P. Snyder et al.`,
-            },
-        ],
+                body: "The team didn't just take blood samples. They collected stool, skin swabs, saliva, and nasal samples repeatedly over years, building one of the most comprehensive biological portraits of aging ever assembled. They tracked molecules across every layer of biology: genes being switched on and off, proteins, fats, metabolites, gut bacteria, skin bacteria. Then they looked for patterns in when things changed, and the two bursts emerged clearly across all of it.\n\nSource: Nature Aging, Stanford Medicine, August 2024\nAuthors: Xiaotao Shen, Chuchu Wang, Michael P. Snyder et al."
+            }
+        ]
     },
     B: {
         maxLayer: 3,
         layers: [
-            // Layer 0 — Preview
             {
                 label: "Preview",
-                headline:
-                    "Stanford's multi-omics study: aging doesn't decline linearly — it surges in two waves at 44 and 60",
-                body: "A landmark longitudinal study tracking 135,000+ biological markers found that 81% of molecules in the human body change nonlinearly with age, clustering into two high-magnitude transition periods — with distinct biological mechanisms driving each.",
+                headline: "Stanford's multi-omics study: aging doesn't decline linearly, it surges in two waves at 44 and 60",
+                body: "A landmark longitudinal study tracking 135,000+ biological markers found that 81% of molecules in the human body change nonlinearly with age, clustering into two high-magnitude transition periods with distinct biological mechanisms driving each."
             },
-            // Layer 1 — Findings
             {
                 label: "The findings",
                 headline: null,
-                body: (
-                    <div className="flex flex-col gap-4">
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm sm:text-base">
-                            108 adults aged 25–75 were tracked for a median of 1.7 years (some up to 6.8 years), with samples collected every 3–6 months across 10 types of biological data: transcriptomics, proteomics, metabolomics, cytokines, clinical lab tests, lipidomics, and gut, skin, oral, and nasal microbiomes. Only 6.6% of the 11,305 molecular features examined changed linearly with age. The majority — 81% — exhibited nonlinear patterns.
-                        </p>
-                        <div className="bg-slate-50 text-xs italic text-slate-600 p-3 rounded-lg border border-slate-200">
-                            All figures are from the original peer-reviewed paper: Shen et al., Nature Aging, Vol. 4, November 2024, pp. 1619–1634.
-                        </div>
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm sm:text-base">
-                            {`Two "crests" of maximal molecular dysregulation emerged consistently across all data types:
-
-Crest 1 (~age 44): Cardiovascular markers, lipid and cholesterol metabolism, alcohol metabolism, caffeine processing, and skin/muscle structural proteins all shifted. Notably, this pattern appeared in both sexes — ruling out menopause as the primary driver.
-
-Crest 2 (~age 60): Immune system dysfunction (immunosenescence), kidney function decline (glomerular filtration), carbohydrate metabolism disruption, and markers for Type 2 diabetes risk were the dominant signals.
-
-Both crests showed shared cardiovascular dysregulation — complement cascade, blood coagulation, fibrinolysis — suggesting that heart disease risk escalates at both transition points.`}
-                        </p>
-                    </div>
-                ),
+                body: "108 adults aged 25–75 were tracked for a median of 1.7 years (some up to 6.8 years), with samples collected every 3–6 months across 10 types of biological data: transcriptomics, proteomics, metabolomics, cytokines, clinical lab tests, lipidomics, and gut, skin, oral, and nasal microbiomes. Only 6.6% of the 11,305 molecular features examined changed linearly with age. The majority, 81%, exhibited nonlinear patterns. All figures are from the original peer-reviewed paper: Shen et al., Nature Aging, Vol. 4, November 2024, pp. 1619–1634.\n\nTwo crests of maximal molecular dysregulation emerged consistently across all data types:\n\nCrest 1 (~age 44): Cardiovascular markers, lipid and cholesterol metabolism, alcohol metabolism, caffeine processing, and skin/muscle structural proteins all shifted. Notably, this pattern appeared in both sexes, ruling out menopause as the primary driver.\n\nCrest 2 (~age 60): Immune system dysfunction (immunosenescence), kidney function decline (glomerular filtration), carbohydrate metabolism disruption, and markers for Type 2 diabetes risk were the dominant signals.\n\nBoth crests showed shared cardiovascular dysregulation (complement cascade, blood coagulation, fibrinolysis) suggesting that heart disease risk escalates at both transition points."
             },
-            // Layer 2 — Methodology
             {
-                label: "Methodology",
+                label: "How they found it",
                 headline: null,
-                body: `Two complementary analytical methods were used to identify the crests:
-
-1. Fuzzy c-means trajectory clustering — grouped the 11,305 molecular features into 11 clusters based on how their levels changed across the lifespan. Three clusters showed the clearest nonlinear patterns peaking around ages 44 and 60.
-
-2. Modified DE-SWAN algorithm — slides a 20-year window across the cohort's age range in 1-year steps, comparing molecular expression between the younger and older half of each window. This approach revealed the two-crest structure robustly across different statistical thresholds (q < 0.0001 to 0.05) and window widths (15–30 years). When participant ages were randomly permuted, the crests disappeared — confirming they reflect real biological change and not statistical noise.`,
+                body: "Two complementary analytical methods were used to identify the crests:\n\n1. Fuzzy c-means trajectory clustering: grouped the 11,305 molecular features into 11 clusters based on how their levels changed across the lifespan. Three clusters showed the clearest nonlinear patterns peaking around ages 44 and 60.\n\n2. Modified DE-SWAN algorithm: slides a 20-year window across the cohort's age range in 1-year steps, comparing molecular expression between the younger and older half of each window. This approach revealed the two-crest structure robustly across different statistical thresholds (q < 0.0001 to 0.05) and window widths (15–30 years). When participant ages were randomly permuted, the crests disappeared, confirming they reflect real biological change and not statistical noise."
             },
-            // Layer 3 — Significance and limitations
             {
-                label: "Significance & limitations",
+                label: "So what",
                 headline: null,
-                body: `The authors identify ages 44 and 60 as actionable windows for targeted clinical screening and preventive intervention. Limitations include a small cohort (n=108), geographic concentration near Stanford, median follow-up of only 1.7 years (insufficient to track within-individual longitudinal change), and absence of lifestyle data (physical activity, alcohol/caffeine consumption) as potential confounders.
-
-Source: Nature Aging, Vol. 4, November 2024, pp. 1619–1634`,
-            },
-        ],
+                body: "The authors identify ages 44 and 60 as actionable windows for targeted clinical screening and preventive intervention. Limitations include a small cohort (n=108), geographic concentration near Stanford, median follow-up of only 1.7 years (insufficient to track within-individual longitudinal change), and absence of lifestyle data (physical activity, alcohol/caffeine consumption) as potential confounders.\n\nSource: Nature Aging, Vol. 4, November 2024, pp. 1619–1634"
+            }
+        ]
     },
     C: {
         maxLayer: 2,
         layers: [
-            // Layer 0 — Preview
             {
                 label: "Preview",
-                headline:
-                    "Nonlinear multi-omics dysregulation during human aging: two crests at ~44 and ~60 via DE-SWAN and trajectory clustering (n=108, Nature Aging 2024)",
-                body: "A longitudinal multi-omics study (n=108, 25–75 yrs, up to 6.8-yr follow-up) identifies two robust nonlinear dysregulation crests at ~44 and ~60, consistent across transcriptomics, proteomics, metabolomics, cytokines, lipidomics, and four microbiome types — with distinct functional module signatures at each crest and implications for nonlinear disease risk modelling.",
+                headline: "Nonlinear multi-omics dysregulation during human aging: two crests at ~44 and ~60 via DE-SWAN and trajectory clustering (n=108, Nature Aging 2024)",
+                body: "A longitudinal multi-omics study (n=108, 25–75 yrs, up to 6.8-yr follow-up) identifies two robust nonlinear dysregulation crests at ~44 and ~60, consistent across transcriptomics, proteomics, metabolomics, cytokines, lipidomics, and four microbiome types, with distinct functional module signatures at each crest and implications for nonlinear disease risk modelling."
             },
-            // Layer 1 — Key quantitative findings
             {
-                label: "Key quantitative findings",
+                label: "Key findings",
                 headline: null,
-                body: (
-                    <div className="flex flex-col gap-4">
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm sm:text-base">
-                            Of 11,305 molecular features, only 749 (6.6%) changed linearly by Spearman correlation. 81.03% (9,106) exhibited nonlinear dysregulation in at least one 5-year age stage vs. baseline (25–40 yr), per two-sided Wilcoxon test (unadjusted p &lt; 0.05). Metabolomics showed the strongest age association (|r| = 0.66, p = 2.6×10⁻¹³); transcriptomics the weakest (|r| = 0.29, p = 4.5×10⁻³).
-                        </p>
-                        <div className="bg-slate-50 text-xs italic text-slate-600 p-3 rounded-lg border border-slate-200">
-                            All figures are from the original peer-reviewed paper: Shen et al., Nature Aging, Vol. 4, November 2024, pp. 1619–1634.
-                        </div>
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm sm:text-base">
-                            {`Fuzzy c-means clustering (Mfuzz, R) yielded 11 trajectory clusters. Modified DE-SWAN (20-yr sliding window, 10-yr parcels, 1-yr step; BH-adjusted q < 0.05) identified crests at ages 44 and 60, robust across q-value cutoffs (0.0001–0.05) and window widths (15–30 yr), disappearing on age permutation.
-
-Crest 1 (~44) dominant modules: Complement and coagulation cascades (adj. p = 1.78×10⁻⁴⁶), platelet degranulation (adj. p = 1.77×10⁻³⁰), fibrinolysis (adj. p = 2.11×10⁻¹⁵), plasma lipoprotein remodelling, alcohol binding (adj. p = 8.49×10⁻⁷), caffeine metabolism (adj. p = 3.78×10⁻³), ECM structural constituent (adj. p = 3.32×10⁻⁸), actin filament organisation (adj. p = 8.41×10⁻⁹).
-
-Crest 2 (~60) dominant modules: Acute-phase response (adj. p = 2.85×10⁻⁸), antimicrobial humoral response (adj. p = 2.18×10⁻⁵), mononuclear cell differentiation (adj. p = 9.35×10⁻⁸), glomerular filtration (adj. p = 8.69×10⁻³), carbohydrate binding, BCAAs (valine/leucine/isoleucine; adj. p = 0.017). Male/female subgroup analyses independently reproduced the two-crest structure, dissociating the ~44 crest from menopausal aetiology.`}
-                        </p>
-                    </div>
-                ),
+                body: "Of 11,305 molecular features, only 749 (6.6%) changed linearly by Spearman correlation. 81.03% (9,106) exhibited nonlinear dysregulation in at least one 5-year age stage vs. baseline (25–40 yr), per two-sided Wilcoxon test (unadjusted p < 0.05). Metabolomics showed the strongest age association (|r| = 0.66, p = 2.6×10⁻¹³); transcriptomics the weakest (|r| = 0.29, p = 4.5×10⁻³).\n\nAll figures are from the original peer-reviewed paper: Shen et al., Nature Aging, Vol. 4, November 2024, pp. 1619–1634.\n\nFuzzy c-means clustering (Mfuzz, R) yielded 11 trajectory clusters. Modified DE-SWAN (20-yr sliding window, 10-yr parcels, 1-yr step; BH-adjusted q < 0.05) identified crests at ages 44 and 60, robust across q-value cutoffs (0.0001–0.05) and window widths (15–30 yr), disappearing on age permutation.\n\nCrest 1 (~44) dominant modules: Complement and coagulation cascades (adj. p = 1.78×10⁻⁴⁶), platelet degranulation (adj. p = 1.77×10⁻³⁰), fibrinolysis (adj. p = 2.11×10⁻¹⁵), plasma lipoprotein remodelling, alcohol binding (adj. p = 8.49×10⁻⁷), caffeine metabolism (adj. p = 3.78×10⁻³), ECM structural constituent (adj. p = 3.32×10⁻⁸), actin filament organisation (adj. p = 8.41×10⁻⁹).\n\nCrest 2 (~60) dominant modules: Acute-phase response (adj. p = 2.85×10⁻⁸), antimicrobial humoral response (adj. p = 2.18×10⁻⁵), mononuclear cell differentiation (adj. p = 9.35×10⁻⁸), glomerular filtration (adj. p = 8.69×10⁻³), carbohydrate binding, BCAAs (valine/leucine/isoleucine; adj. p = 0.017). Male/female subgroup analyses independently reproduced the two-crest structure, dissociating the ~44 crest from menopausal aetiology."
             },
-            // Layer 2 — Full methodology pipeline
             {
-                label: "Full methodology pipeline",
+                label: "Methodology and limitations",
                 headline: null,
-                body: `5,405 samples (1,440 blood, 926 stool, 1,116 skin, 1,001 oral, 922 nasal) across 108 participants (51.9% female; median BMI 28.2; diverse ethnicity). 10 omics types: transcriptomics from PBMCs (Illumina HiSeq 2000; HTseq/DESeq2; 8,556 features), SWATH proteomics (TripleTOF 6600; 302 proteins; FDR 1% peptide/10% protein), untargeted metabolomics (HILIC/RPLC, Thermo Q Exactive Plus; 814 features), cytokines (66), clinical labs (51), lipidomics (846), microbiomes via genus-level taxonomy (gut/skin/oral/nasal). Confounders (BMI, sex, IRIS, ethnicity) adjusted via linear regression residuals. LOESS smoothing applied prior to clustering. Pathway enrichment via clusterProfiler (GO/KEGG/Reactome); redundancy reduced via Jaccard-index similarity networks and edge-betweenness community detection (igraph).
-
-Limitations: n=108 with only 8 participants aged 25–40 (underpowers baseline); Stanford-proximate cohort; median follow-up 1.7 yr (insufficient for intra-individual trajectory detection); absent lifestyle covariates (physical activity, alcohol/caffeine intake); blood-derived transcriptomics limits tissue-specific interpretation.`,
-            },
-        ],
-    },
+                body: "5,405 samples (1,440 blood, 926 stool, 1,116 skin, 1,001 oral, 922 nasal) across 108 participants (51.9% female; median BMI 28.2; diverse ethnicity). 10 omics types: transcriptomics from PBMCs (Illumina HiSeq 2000; HTseq/DESeq2; 8,556 features), SWATH proteomics (TripleTOF 6600; 302 proteins; FDR 1% peptide/10% protein), untargeted metabolomics (HILIC/RPLC, Thermo Q Exactive Plus; 814 features), cytokines (66), clinical labs (51), lipidomics (846), microbiomes via genus-level taxonomy (gut/skin/oral/nasal). Confounders (BMI, sex, IRIS, ethnicity) adjusted via linear regression residuals. LOESS smoothing applied prior to clustering. Pathway enrichment via clusterProfiler (GO/KEGG/Reactome); redundancy reduced via Jaccard-index similarity networks and edge-betweenness community detection (igraph).\n\nLimitations: n=108 with only 8 participants aged 25–40 (underpowers baseline); Stanford-proximate cohort; median follow-up 1.7 yr (insufficient for intra-individual trajectory detection); absent lifestyle covariates (physical activity, alcohol/caffeine intake); blood-derived transcriptomics limits tissue-specific interpretation."
+            }
+        ]
+    }
 };
 
 const MEDICINE_PAPER = {
@@ -602,10 +543,31 @@ const PAPER_CONTENT = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDisplayProps) {
+function mapTrustAnchor(q9Answer: string | undefined): string {
+    if (!q9Answer) return "What they found";
+    if (q9Answer.includes("Where it came from")) return "Where it came from";
+    if (q9Answer.includes("Why it matters")) return "Why it matters";
+    if (q9Answer.includes("How it fits")) return "How it fits";
+    return "What they found";
+}
+
+export default function CardDisplay({ cardType, fieldGroup, readingComfort, readingGoal, timeAvailable, trustAnchor, researchInterest, confusionResponse, normalisedScore, onProceed }: CardDisplayProps) {
     const [layer, setLayer] = useState(0);
+    const [maxRevealedLayer, setMaxRevealedLayer] = useState(0);
     const [showCard, setShowCard] = useState(false);
-    
+
+    // AI-generated card state
+    type CardContent = typeof DEFAULT_PAPER["A"];
+    const [allGeneratedCards, setAllGeneratedCards] = useState<{ A: CardContent; B: CardContent; C: CardContent } | null>(null);
+    const [paperTitle, setPaperTitle] = useState<string>("");
+    const [generatedCardText, setGeneratedCardText] = useState<string>("");
+    const [isLoading, setIsLoading] = useState(true);
+    // hasError is tracked for diagnostics; UI silently falls back to DEFAULT_PAPER
+    const [hasError, setHasError] = useState(false);
+    const hasCalledRef = useRef(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isFallback, setIsFallback] = useState(false);
+
     const [calibration, setCalibration] = useState<CalibrationResponse | null>(null);
     const [showAlternatePrompt, setShowAlternatePrompt] = useState(false);
     const [isShowingAlternate, setIsShowingAlternate] = useState(false);
@@ -613,11 +575,66 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
     const [alternateRating, setAlternateRating] = useState("");
 
     // Determine which paper content and card data to display
-    const paper = PAPER_CONTENT[fieldGroup as keyof typeof PAPER_CONTENT] 
+    const paper = PAPER_CONTENT[fieldGroup as keyof typeof PAPER_CONTENT]
         ?? PAPER_CONTENT.default;
     const activeCardType = isShowingAlternate && alternateCardType ? alternateCardType : cardType;
-    const card = paper[activeCardType];
+    const baseCard = paper[activeCardType];
+    // Use Gemini-generated card for both primary and alternate views when available
+    const card = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
     const isMaxLayer = layer >= card.maxLayer;
+
+    const generateCardContent = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const savedPersona = typeof window !== "undefined" ? localStorage.getItem("mtp-persona-override") : null;
+            const savedContext = typeof window !== "undefined" ? localStorage.getItem("mtp-user-context") : null;
+            const generatedPersona = `You appear to be a ${fieldGroup ?? "research"} professional who reads research for ${readingGoal?.toLowerCase() ?? "staying current"}.`;
+
+            const res = await fetch("/api/generate-card", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    cardType,
+                    fieldGroup: fieldGroup ?? "General",
+                    userProfile: {
+                        field: fieldGroup ?? "not specified",
+                        readingComfort: readingComfort ?? "not specified",
+                        readingGoal: readingGoal ?? "not specified",
+                        timeAvailable: timeAvailable ?? "not specified",
+                        trustAnchor: mapTrustAnchor(trustAnchor),
+                        researchInterest: researchInterest ?? "not specified",
+                        confusionResponse: confusionResponse ?? "not specified",
+                        userPersona: savedPersona ?? generatedPersona,
+                        userContext: savedContext ?? "",
+                    },
+                }),
+            });
+            if (!res.ok) {
+                setAllGeneratedCards(DEFAULT_PAPER as typeof allGeneratedCards);
+                setIsFallback(true);
+                setIsLoading(false);
+                return;
+            }
+            const data = await res.json();
+            setAllGeneratedCards({ A: data.A, B: data.B, C: data.C });
+            setPaperTitle(data.paperTitle ?? "");
+            setGeneratedCardText(JSON.stringify(data[cardType]?.layers));
+        } catch {
+            setAllGeneratedCards(DEFAULT_PAPER as typeof allGeneratedCards);
+            setIsFallback(true);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Fetch AI-generated card once on mount
+    useEffect(() => {
+        if (hasCalledRef.current) return;
+        hasCalledRef.current = true;
+        generateCardContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => setShowCard(true), 1000);
@@ -625,7 +642,10 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
     }, []);
 
     function handleReadMore() {
-        if (!isMaxLayer) setLayer((l) => l + 1);
+        if (!isMaxLayer) {
+            setLayer((l) => l + 1);
+            setMaxRevealedLayer((m) => Math.max(m, layer + 1));
+        }
     }
 
     function handleCalibrationSelect(response: CalibrationResponse) {
@@ -633,7 +653,7 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
 
         if (response === "About right") {
             // Proceed immediately
-            onProceed(response, null, "");
+            onProceed(response, null, "", paperTitle, generatedCardText);
         } else {
             // Show follow-up prompt
             setShowAlternatePrompt(true);
@@ -648,6 +668,7 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
         
         // Reset view state for the new card
         setLayer(0);
+        setMaxRevealedLayer(0);
         setShowCard(false);
         setShowAlternatePrompt(false);
         setIsShowingAlternate(true);
@@ -659,13 +680,30 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
 
     function handleSkipAlternate() {
         // User clicked "No, continue"
-        onProceed(calibration!, null, "");
+        onProceed(calibration!, null, "", paperTitle, generatedCardText);
     }
 
     function handleAlternateRating(rating: string) {
         setAlternateRating(rating);
-        onProceed(calibration!, alternateCardType, rating);
+        onProceed(calibration!, alternateCardType, rating, paperTitle, generatedCardText);
     }
+
+    // Suppress unused variables from deprecated error UI
+    void error;
+    void setError;
+
+    // Show spinner while Gemini is generating
+    if (isLoading && !allGeneratedCards && !error) {
+        return (
+            <div className="max-w-2xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[50vh]">
+                <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-indigo-500 animate-spin" />
+                <p className="text-sm text-slate-400 mt-4">Preparing your version...</p>
+            </div>
+        );
+    }
+
+    // Suppress unused variable warning — hasError is kept for diagnostics
+    void hasError;
 
     if (showAlternatePrompt) {
         const promptText = calibration === "Too advanced"
@@ -673,7 +711,7 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
             : "Would you like to see a more detailed version?";
 
         return (
-            <div className="py-12 flex flex-col items-center justify-center fade-in">
+            <div className="max-w-2xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[50vh] fade-in">
                 <p className="text-lg font-medium text-slate-800 mb-8 font-serif text-center">
                     {promptText}
                 </p>
@@ -696,95 +734,110 @@ export default function CardDisplay({ cardType, fieldGroup, onProceed }: CardDis
     }
 
     return (
-        <div className="py-4">
-            {/* Top label */}
-            <p className="text-sm font-serif text-slate-500 italic text-center mb-4 fade-in">
-                {isShowingAlternate 
-                    ? "Here is the alternate version."
-                    : "Based on your responses, here's how this paper was framed for someone like you."}
-            </p>
+        <div className="flex-1 w-full h-full p-8 flex flex-col items-center overflow-y-auto">
+                
+            {isFallback && (
+                <div className="bg-amber-50 text-amber-800 text-sm font-medium px-4 py-3 rounded-lg text-center mb-6 border border-amber-200 fade-in max-w-[480px] w-full">
+                    Showing a sample card — personalised version unavailable right now.
+                </div>
+            )}
 
-            {/* Card */}
             {showCard && (
-                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm scale-fade-in">
-                    {/* ... Layer tab strip ... */}
-                    <div className="px-6 pt-5 flex gap-2 flex-wrap">
-                        {card.layers.slice(0, layer + 1).map((l, i) => (
-                            <span
-                                key={i}
-                                className={`text-xs font-medium px-2.5 py-1 rounded-full ${i === layer
-                                    ? "bg-indigo-100 text-indigo-700"
-                                    : "bg-slate-100 text-slate-400"
+                <div className="w-[480px] shrink-0 rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-4 p-5 scale-fade-in mb-8">
+                    
+                    {/* 1. Context text */}
+                    <p className="text-[13px] text-slate-500 italic">
+                        {isShowingAlternate 
+                            ? "Here is the alternate version."
+                            : "Based on your responses, here's how this paper was framed for someone like you."}
+                    </p>
+
+                    {/* 2. Tabs */}
+                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
+                        {card.layers.map((l, i: number) => {
+                            const isActive = i === layer;
+                            const isRevealed = i <= maxRevealedLayer;
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => isRevealed && setLayer(i)}
+                                    className={`shrink-0 text-xs font-semibold px-4 py-1.5 rounded-full transition-all ${
+                                        isActive
+                                            ? "bg-slate-900 text-white"
+                                            : isRevealed
+                                            ? "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                            : "bg-slate-100/50 text-slate-400 cursor-default opacity-70"
                                     }`}
-                            >
-                                {l.label}
-                            </span>
-                        ))}
+                                >
+                                    {l.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* Content */}
-                    <div className="px-6 pt-4 pb-6 fade-in" key={layer}>
+                    {/* 3. Content */}
+                    <div className="flex flex-col gap-3 fade-in mt-1" key={layer}>
                         {card.layers[layer].headline && (
-                            <h2 className="text-lg font-semibold text-slate-900 leading-snug mb-3">
+                            <h2 className="text-[22px] font-serif font-bold text-slate-900 leading-[1.3] tracking-tight">
                                 {card.layers[layer].headline}
                             </h2>
                         )}
                         {typeof card.layers[layer].body === "string" ? (
-                            <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm sm:text-base">
+                            <p className="font-serif text-slate-700 leading-relaxed text-[15px] whitespace-pre-line">
                                 {card.layers[layer].body}
                             </p>
                         ) : (
-                            <div>
-                                {card.layers[layer].body}
+                            <div className="font-serif text-slate-700 leading-relaxed text-[15px] whitespace-pre-line">
+                                {card.layers[layer].body as React.ReactNode}
                             </div>
                         )}
                     </div>
 
-                    {/* Actions */}
-                    <div className="px-6 pb-6 flex flex-col gap-3">
+                    {/* 4. Actions */}
+                    <div className="mt-2 flex flex-col gap-3">
                         {!isMaxLayer && (
                             <button
                                 onClick={handleReadMore}
-                                className="w-full py-3 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 transition-all"
+                                className="w-full py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all font-sans"
                             >
                                 Read more →
                             </button>
                         )}
-                        {isMaxLayer && !isShowingAlternate && (
-                            <div className="flex flex-col gap-2 fade-in">
-                                <p className="text-sm font-medium text-slate-700 mb-1 text-center font-serif">
+                        {isMaxLayer && maxRevealedLayer >= card.maxLayer && !isShowingAlternate && (
+                            <div className="flex flex-col gap-2 fade-in mt-2 border-t border-slate-100 pt-4">
+                                <p className="text-sm font-semibold text-slate-700 mb-2 text-center font-sans tracking-tight">
                                     How did this feel?
                                 </p>
                                 <button
                                     onClick={() => handleCalibrationSelect("Too basic")}
-                                    className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-serif"
+                                    className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-sans"
                                 >
                                     Too basic
                                 </button>
                                 <button
                                     onClick={() => handleCalibrationSelect("About right")}
-                                    className="w-full py-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-medium text-sm hover:border-indigo-500 hover:bg-indigo-100 transition-all font-serif"
+                                    className="w-full py-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-medium text-sm hover:border-indigo-500 hover:bg-indigo-100 transition-all font-sans"
                                 >
                                     About right
                                 </button>
                                 <button
                                     onClick={() => handleCalibrationSelect("Too advanced")}
-                                    className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-serif"
+                                    className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-sans"
                                 >
                                     Too advanced
                                 </button>
                             </div>
                         )}
                         {isMaxLayer && isShowingAlternate && (
-                            <div className="flex flex-col gap-2 fade-in">
-                                <p className="text-sm font-medium text-slate-700 mb-1 text-center font-serif">
+                            <div className="flex flex-col gap-2 fade-in mt-2 border-t border-slate-100 pt-4">
+                                <p className="text-sm font-semibold text-slate-700 mb-2 text-center font-sans tracking-tight">
                                     How does this version feel compared to the first?
                                 </p>
                                 {["Much better", "Somewhat better", "About the same", "Worse"].map((rating) => (
                                     <button
                                         key={rating}
                                         onClick={() => handleAlternateRating(rating)}
-                                        className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-serif"
+                                        className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-sans"
                                     >
                                         {rating}
                                     </button>

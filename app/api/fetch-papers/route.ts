@@ -27,14 +27,17 @@ export async function GET(request: Request) {
 
         // Build the filter string
         let filterString: string;
+        let sortString: string;
         const fieldId = fieldMap[fieldGroupParam as FieldGroup];
 
         if (fieldId !== null && fieldId !== undefined) {
             // Known field with a valid OpenAlex ID
             filterString = `${BASE_FILTERS},topics.field.id:${fieldId}`;
+            sortString = "&sort=cited_by_count:desc";
         } else {
             // "Other" or unknown field — use free-text search, no field filter
             filterString = BASE_FILTERS;
+            sortString = "&sort=relevance_score:desc";
         }
 
         // Build the full OpenAlex URL
@@ -42,7 +45,7 @@ export async function GET(request: Request) {
             `https://api.openalex.org/works` +
             `?filter=${filterString}` +
             (fieldId === null ? `&search=${encodeURIComponent(fieldGroupParam)}` : "") +
-            `&sort=cited_by_count:desc` +
+            sortString +
             `&select=id,title,abstract_inverted_index,authorships,publication_year,cited_by_count,doi,primary_location,primary_topic` +
             `&per_page=5` +
             `&mailto=${MAILTO}`;

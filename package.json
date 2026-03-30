@@ -1,5 +1,5 @@
 {
-  "name": "quiz-app",
+  "name": "liquidread",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "jsonrepair": "^3.13.3",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
