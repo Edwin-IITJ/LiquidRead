@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CardType, CalibrationResponse } from "@/types/quiz";
+import NarrativeCard from "@/components/cards/NarrativeCard";
+import StatsCard from "@/components/cards/StatsCard";
+import ComparisonCard from "@/components/cards/ComparisonCard";
+import { logEvent } from "@/utils/logEvent";
+import { getSessionId } from "@/utils/sessionId";
 
 interface CardDisplayProps {
     cardType: CardType;
@@ -559,7 +564,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
     // AI-generated card state
     type CardContent = typeof DEFAULT_PAPER["A"];
     const [allGeneratedCards, setAllGeneratedCards] = useState<{ A: CardContent; B: CardContent; C: CardContent } | null>(null);
-    const [paperTitle, setPaperTitle] = useState<string>("");
+    const [paperTitle, setPaperTitle] = useState<string | null>(null);
     const [generatedCardText, setGeneratedCardText] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     // hasError is tracked for diagnostics; UI silently falls back to DEFAULT_PAPER
@@ -567,6 +572,19 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
     const hasCalledRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [isFallback, setIsFallback] = useState(false);
+    const [componentType, setComponentType] = useState<string>("NarrativeCard");
+    const [visualHints, setVisualHints] = useState<{
+        keyStat: string | null;
+        keyStatLabel: string | null;
+        comparisonLeft: string | null;
+        comparisonRight: string | null;
+    }>({
+        keyStat: null,
+        keyStatLabel: null,
+        comparisonLeft: null,
+        comparisonRight: null,
+    });
+    const layerEnteredAt = useRef<number>(Date.now());
 
     const [calibration, setCalibration] = useState<CalibrationResponse | null>(null);
     const [showAlternatePrompt, setShowAlternatePrompt] = useState(false);
@@ -618,8 +636,39 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             }
             const data = await res.json();
             setAllGeneratedCards({ A: data.A, B: data.B, C: data.C });
-            setPaperTitle(data.paperTitle ?? "");
+            setPaperTitle(data.paperTitle ?? null);
             setGeneratedCardText(JSON.stringify(data[cardType]?.layers));
+            if (data.componentType) setComponentType(data.componentType);
+            if (data.visualHints) setVisualHints(data.visualHints);
+            logEvent({
+                session_id: getSessionId(),
+                event_type: "card_generated",
+                component_type: data.componentType ?? "NarrativeCard",
+                card_variant: cardType,
+                paper_title: data.paperTitle ?? null,
+                paper_field: fieldGroup ?? null,
+                normalised_score: normalisedScore ?? null,
+                metadata: {
+                    confidence: data.confidence ?? null,
+                    visualHints: data.visualHints ?? null,
+                    readingGoal: readingGoal ?? null,
+                    timeAvailable: timeAvailable ?? null,
+                    confusionResponse: confusionResponse ?? null,
+                    readingComfort: readingComfort ?? null,
+                    trustAnchor: trustAnchor ?? null,
+                    researchInterest: researchInterest ?? null,
+                    fieldGroup: fieldGroup ?? null,
+                },
+            });
+            logEvent({
+                session_id: getSessionId(),
+                event_type: "card_rendered",
+                component_type: data.componentType ?? "NarrativeCard",
+                card_variant: cardType,
+                paper_title: data.paperTitle ?? null,
+                paper_field: fieldGroup ?? null,
+                normalised_score: normalisedScore ?? null,
+            });
         } catch {
             setAllGeneratedCards(DEFAULT_PAPER as typeof allGeneratedCards);
             setIsFallback(true);
@@ -643,9 +692,38 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
 
     function handleReadMore() {
         if (!isMaxLayer) {
+            const newLayerIndex = layer + 1;
+            const elapsed = Date.now() - layerEnteredAt.current;
+            logEvent({
+                session_id: getSessionId(),
+                event_type: "layer_change",
+                component_type: componentType,
+                card_variant: cardType,
+                paper_title: paperTitle,
+                layer_reached: newLayerIndex,
+                time_on_layer_ms: elapsed,
+                paper_field: fieldGroup ?? null,
+            });
+            layerEnteredAt.current = Date.now();
             setLayer((l) => l + 1);
             setMaxRevealedLayer((m) => Math.max(m, layer + 1));
         }
+    }
+
+    function handleTabChange(newLayerIndex: number) {
+        const elapsed = Date.now() - layerEnteredAt.current;
+        logEvent({
+            session_id: getSessionId(),
+            event_type: "tab_change",
+            component_type: componentType,
+            card_variant: cardType,
+            paper_title: paperTitle,
+            layer_reached: newLayerIndex,
+            time_on_layer_ms: elapsed,
+            paper_field: fieldGroup ?? null,
+        });
+        layerEnteredAt.current = Date.now();
+        setLayer(newLayerIndex);
     }
 
     function handleCalibrationSelect(response: CalibrationResponse) {
@@ -653,7 +731,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
 
         if (response === "About right") {
             // Proceed immediately
-            onProceed(response, null, "", paperTitle, generatedCardText);
+            onProceed(response, null, "", paperTitle ?? "", generatedCardText);
         } else {
             // Show follow-up prompt
             setShowAlternatePrompt(true);
@@ -680,12 +758,38 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
 
     function handleSkipAlternate() {
         // User clicked "No, continue"
-        onProceed(calibration!, null, "", paperTitle, generatedCardText);
+        logEvent({
+            session_id: getSessionId(),
+            event_type: "alternate_requested",
+            component_type: componentType,
+            card_variant: cardType,
+            paper_title: paperTitle,
+            paper_field: fieldGroup ?? null,
+            normalised_score: normalisedScore ?? null,
+            metadata: {
+                alternateShown: null,
+                alternateRating: null,
+            },
+        });
+        onProceed(calibration!, null, "", paperTitle ?? "", generatedCardText);
     }
 
     function handleAlternateRating(rating: string) {
         setAlternateRating(rating);
-        onProceed(calibration!, alternateCardType, rating, paperTitle, generatedCardText);
+        logEvent({
+            session_id: getSessionId(),
+            event_type: "alternate_requested",
+            component_type: componentType,
+            card_variant: cardType,
+            paper_title: paperTitle,
+            paper_field: fieldGroup ?? null,
+            normalised_score: normalisedScore ?? null,
+            metadata: {
+                alternateShown: alternateCardType ?? null,
+                alternateRating: rating ?? null,
+            },
+        });
+        onProceed(calibration!, alternateCardType, rating, paperTitle ?? "", generatedCardText);
     }
 
     // Suppress unused variables from deprecated error UI
@@ -733,6 +837,14 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         );
     }
 
+    function resolveCardComponent(type: string) {
+        switch (type) {
+            case "StatsCard":      return StatsCard;
+            case "ComparisonCard": return ComparisonCard;
+            default:               return NarrativeCard;
+        }
+    }
+
     return (
         <div className="flex-1 w-full h-full px-4 py-6 md:p-8 flex flex-col items-center overflow-y-auto">
 
@@ -760,7 +872,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                             return (
                                 <button
                                     key={i}
-                                    onClick={() => isRevealed && setLayer(i)}
+                                    onClick={() => isRevealed && handleTabChange(i)}
                                     className={`shrink-0 text-xs font-semibold px-4 py-1.5 rounded-full transition-all ${isActive
                                         ? "bg-slate-900 text-white"
                                         : isRevealed
@@ -775,21 +887,17 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                     </div>
 
                     {/* 3. Content */}
-                    <div className="flex flex-col gap-3 fade-in mt-1" key={layer}>
-                        {card.layers[layer].headline && (
-                            <h2 className="text-[22px] font-serif font-bold text-slate-900 leading-[1.3] tracking-tight">
-                                {card.layers[layer].headline}
-                            </h2>
-                        )}
-                        {typeof card.layers[layer].body === "string" ? (
-                            <p className="font-serif text-slate-700 leading-relaxed text-[15px] whitespace-pre-line">
-                                {card.layers[layer].body}
-                            </p>
-                        ) : (
-                            <div className="font-serif text-slate-700 leading-relaxed text-[15px] whitespace-pre-line">
-                                {card.layers[layer].body as React.ReactNode}
-                            </div>
-                        )}
+                    <div className="fade-in mt-1" key={layer}>
+                        {(() => {
+                            const CardComponent = resolveCardComponent(componentType);
+                            return (
+                                <CardComponent
+                                    layer={layer}
+                                    card={card}
+                                    visualHints={visualHints}
+                                />
+                            );
+                        })()}
                     </div>
 
                     {/* 4. Actions */}

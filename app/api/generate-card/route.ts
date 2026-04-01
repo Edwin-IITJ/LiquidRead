@@ -256,7 +256,30 @@ A:0,Preview(hook+teaser) 1,The story(plain+stat) 2,How they found it(method+link
 B:0,Preview(hook+teaser) 1,The finding(stats+VISUAL+trustAnchor) 2,How they found it(method) 3,So what(implic+link)
 C:0,Preview(technical) 1,Key findings(quant+p-vals) 2,Methodology and limitations(pipeline+limits)
 JSON only:
-{"A":{"maxLayer":2,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The story","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"}]},"B":{"maxLayer":3,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The finding","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"},{"label":"So what","headline":null,"body":"<str>"}]},"C":{"maxLayer":2,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"Key findings","headline":null,"body":"<str>"},{"label":"Methodology and limitations","headline":null,"body":"<str>"}]}}`;
+{"A":{"maxLayer":2,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The story","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"}]},"B":{"maxLayer":3,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The finding","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"},{"label":"So what","headline":null,"body":"<str>"}]},"C":{"maxLayer":2,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"Key findings","headline":null,"body":"<str>"},{"label":"Methodology and limitations","headline":null,"body":"<str>"}]}}
+
+---
+COMPONENT CLASSIFICATION:
+Analyse the paper content and classify it with ONE componentType:
+- "NarrativeCard": behavioural science, social science, qualitative research, human-interest findings, lifestyle studies, psychology
+- "StatsCard": RCTs, meta-analyses, quantitative-heavy papers where a single statistic IS the core finding (e.g. "27% slower decline", "81% of molecules")
+- "ComparisonCard": two-condition studies, A vs B designs, method comparisons, papers with two clearly named groups or approaches
+
+Add these fields to the ROOT level of the JSON response (not inside A, B, or C — at the same level as them):
+"componentType": "StatsCard",
+"confidence": 0.91,
+"visualHints": {
+  "keyStat": "81%",
+  "keyStatLabel": "of molecules change nonlinearly with age",
+  "comparisonLeft": null,
+  "comparisonRight": null
+}
+
+Rules for visualHints:
+- keyStat: short number or percentage string only (e.g. "27%", "1,795", "44"). null if no single dominant stat exists.
+- keyStatLabel: plain English label for keyStat, max 8 words. null if keyStat is null.
+- comparisonLeft + comparisonRight: short column label strings for ComparisonCard only (e.g. "Lecanemab group", "Placebo group"). null for all other component types.
+- confidence: float 0.0 to 1.0`;
 
     const dynamicPrompt = `${userProfileText}\n\n${personalisationInstructions}\n\n${paperText}\n\n${taskAndSchema}`;
 
@@ -304,6 +327,21 @@ function validateCards(cards: unknown): boolean {
                 return false;
             }
         }
+    }
+
+    const validTypes = ["NarrativeCard", "StatsCard", "ComparisonCard"];
+    const ct = (cards as Record<string, unknown>).componentType;
+    if (!ct || !validTypes.includes(ct as string)) {
+        console.warn("Invalid or missing componentType — defaulting to NarrativeCard");
+        (cards as Record<string, unknown>).componentType = "NarrativeCard";
+    }
+    if (!(cards as Record<string, unknown>).visualHints) {
+        (cards as Record<string, unknown>).visualHints = {
+            keyStat: null,
+            keyStatLabel: null,
+            comparisonLeft: null,
+            comparisonRight: null
+        };
     }
 
     console.log('VALIDATION RESULT:', true);

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logEvent } from "@/utils/logEvent";
+import { getSessionId } from "@/utils/sessionId";
 import { AppState, Answer, CardType, CalibrationResponse, QuizState } from "@/types/quiz";
 import { questions } from "@/data/questions";
 import { calculateScore } from "@/lib/scoring";
@@ -143,6 +145,19 @@ export default function QuizApp() {
     }
 
     async function handleReflectionSubmit(answers: ReflectionAnswers) {
+        logEvent({
+            session_id: getSessionId(),
+            event_type: "card_rated",
+            component_type: "NarrativeCard",
+            card_variant: state.cardShown,
+            paper_title: state.paperTitle || null,
+            paper_field: state.fieldGroup || null,
+            normalised_score: state.normalisedScore ?? null,
+            metadata: {
+                suitabilityRating: answers.suitability ?? null,
+                openFeedback: answers.openFeedback || null,
+            },
+        });
         // We capture the reflection answers, update state, and submit all data
         const payload = {
             timestamp: new Date().toISOString(),
