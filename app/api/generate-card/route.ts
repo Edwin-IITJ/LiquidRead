@@ -430,11 +430,6 @@ Rules for visualHints:
 - confidence: float 0.0 to 1.0
 
 ---
-GENERIC CARD:
-Also add a "generic_card" field at the root JSON level. Ignore the user profile entirely for this card. Write it as a neutral, balanced mid-level summary — no field-specific framing, no tuned analogies, no reader assumptions, as if you know nothing about the reader. Structure it identically to Card B (headline, hook/teaser body, core finding with key stat explained plainly, method in one sentence, so-what implication):
-"generic_card":{"maxLayer":3,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The finding","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"},{"label":"So what","headline":null,"body":"<str>"}]}
-
----
 COMPREHENSION QUIZ:
 Also add a "comprehension_quiz" field at the root JSON level. Generate exactly 2 multiple-choice questions that test understanding of the paper's single most important finding. Both questions must be answerable from the card content alone — no outside knowledge required. Each question must have exactly 4 options: one clearly correct answer and three plausible distractors. Keep questions concise (max 20 words each).
 "comprehension_quiz":[{"question":"<str>","options":["<option A text>","<option B text>","<option C text>","<option D text>"],"correct":"<A|B|C|D>","explanation":"<1 sentence explaining why the correct answer is right>"},{"question":"<str>","options":["<option A text>","<option B text>","<option C text>","<option D text>"],"correct":"<A|B|C|D>","explanation":"<1 sentence>"}]${fullTextRules}`;

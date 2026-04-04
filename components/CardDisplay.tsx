@@ -581,7 +581,6 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         comparisonRight: null,
     });
     // Generic (non-personalised) card toggle
-    const [genericCard, setGenericCard] = useState<CardContent | null>(null);
     const [showGeneric, setShowGeneric] = useState(false);
     // Comprehension quiz
     type QuizQuestion = { question: string; options: string[]; correct: string; explanation: string };
@@ -592,6 +591,19 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         ?? PAPER_CONTENT.default;
     const activeCardType = cardType;
     const baseCard = paper[activeCardType];
+    
+    // Generic card constructed locally from the raw paper abstract
+    const genericCard: CardContent | null = paperTitle && paperAbstract ? {
+        maxLayer: 1,
+        layers: [
+            {
+                label: "Original abstract",
+                headline: paperTitle,
+                body: paperAbstract.length > 400 ? paperAbstract.substring(0, 400) + "..." : paperAbstract,
+            }
+        ]
+    } : null;
+
     // Use Gemini-generated card when available; swap to generic when toggled
     const personalisedCard = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
     const card = showGeneric && genericCard ? genericCard : personalisedCard;
@@ -636,7 +648,6 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             setPaperDoi(data.doi ?? null);
             if (data.componentType) setComponentType(data.componentType);
             if (data.visualHints) setVisualHints(data.visualHints);
-            if (data.generic_card) setGenericCard(data.generic_card as CardContent);
             if (data.comprehension_quiz) setComprehensionQuiz(data.comprehension_quiz as QuizQuestion[]);
             logEvent({
                 session_id: getSessionId(),
@@ -712,7 +723,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             {!isLoading && genericCard && (
                 <div className="w-full max-w-[480px] flex items-center justify-end gap-2 mb-1.5">
                     {showGeneric && (
-                        <span className="text-xs text-slate-400">Not personalised to your profile</span>
+                        <span className="text-xs text-slate-400">Raw abstract — not personalised</span>
                     )}
                     <button
                         onClick={() => {
@@ -771,6 +782,12 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             fieldGroup={fieldGroup ?? ""}
             comprehensionQuiz={comprehensionQuiz}
             isGenericCard={showGeneric}
+            adjacentCards={allGeneratedCards ? {
+                too_basic: activeCardType === 'A' ? null 
+                    : allGeneratedCards[activeCardType === 'C' ? 'B' : 'A'].layers,
+                too_advanced: activeCardType === 'C' ? null 
+                    : allGeneratedCards[activeCardType === 'A' ? 'B' : 'C'].layers,
+            } : null}
             onFeedbackSubmit={(suitability, calibration, openFeedback) => {
                 onProceed(suitability, calibration, openFeedback, paperTitle ?? "");
             }}

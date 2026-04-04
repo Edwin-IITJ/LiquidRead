@@ -57,6 +57,10 @@ export interface ExpandedViewProps {
   onFeedbackSubmit: (suitability: number, calibration: 'too_basic' | 'just_right' | 'too_advanced', openFeedback: string) => void;
   comprehensionQuiz?: Array<{ question: string; options: string[]; correct: string; explanation: string }> | null;
   isGenericCard?: boolean;
+  adjacentCards?: {
+    too_basic: Array<{ label: string; headline: string | null; body: string }> | null;
+    too_advanced: Array<{ label: string; headline: string | null; body: string }> | null;
+  } | null;
 }
 
 // ─── Visual renderer ──────────────────────────────────────────────────────────
@@ -100,6 +104,7 @@ export default function ExpandedView({
   onFeedbackSubmit,
   comprehensionQuiz,
   isGenericCard = false,
+  adjacentCards = null,
 }: ExpandedViewProps) {
   const [data, setData] = useState<ExpandedData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,10 +116,16 @@ export default function ExpandedView({
   const [openFeedback, setOpenFeedback] = useState<string>('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<boolean>(false);
 
-  // Recalibration state
-  const [isRecalibrating, setIsRecalibrating] = useState(false);
-  const [recalibrationFailed, setRecalibrationFailed] = useState(false);
+  // Recalibration layer reader state
   const [recalibrationDone, setRecalibrationDone] = useState(false);
+  const [recalLayers, setRecalLayers] = useState<Array<{ label: string; headline: string | null; body: string }> | null>(null);
+  const [recalLayerIdx, setRecalLayerIdx] = useState(0);
+  // Second feedback form (shown after reading the adjusted card layers)
+  const [recalSuitability, setRecalSuitability] = useState(0);
+  const [recalHoveredStar, setRecalHoveredStar] = useState(0);
+  const [recalCalibration, setRecalCalibration] = useState<'too_basic' | 'just_right' | 'too_advanced' | null>(null);
+  const [recalOpenFeedback, setRecalOpenFeedback] = useState('');
+  const [recalFeedbackSubmitted, setRecalFeedbackSubmitted] = useState(false);
 
   // Comprehension quiz state
   const [quizAnswers, setQuizAnswers] = useState<(string | null)[]>([null, null]);
@@ -181,9 +192,14 @@ export default function ExpandedView({
     setCalibration(null);
     setOpenFeedback('');
     setFeedbackSubmitted(false);
-    setIsRecalibrating(false);
-    setRecalibrationFailed(false);
     setRecalibrationDone(false);
+    setRecalLayers(null);
+    setRecalLayerIdx(0);
+    setRecalSuitability(0);
+    setRecalHoveredStar(0);
+    setRecalCalibration(null);
+    setRecalOpenFeedback('');
+    setRecalFeedbackSubmitted(false);
     setQuizAnswers([null, null]);
     setQuizSubmitted(false);
     setQuizSkipped(false);
@@ -193,57 +209,11 @@ export default function ExpandedView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Called when user taps "See it adjusted for you"
-  async function fetchRecalibrated() {
-    if (!calibration || calibration === 'just_right') return;
-    setIsRecalibrating(true);
-    setRecalibrationFailed(false);
-
-    try {
-      const res = await fetch('/api/generate-recalibrated', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paperTitle,
-          paperAbstract,
-          cardVariant,
-          normalisedScore,
-          readingGoal,
-          timeAvailable,
-          confusionResponse,
-          trustAnchor,
-          fieldGroup,
-          calibrationSignal: calibration,
-        }),
-      });
-
-      if (!res.ok) {
-        console.error('generate-recalibrated error:', res.status);
-        setRecalibrationFailed(true);
-        return;
-      }
-
-      const json = await res.json();
-      setData(json);
-      setRecalibrationDone(true);
-
-      logEvent({
-        session_id: getSessionId(),
-        event_type: 'recalibration_requested',
-        component_type: null,
-        card_variant: cardVariant,
-        paper_title: paperTitle,
-        paper_field: fieldGroup,
-        normalised_score: normalisedScore,
-        metadata: { calibrationSignal: calibration },
-      });
-    } catch (err) {
-      console.error('generate-recalibrated fetch failed:', err);
-      setRecalibrationFailed(true);
-    } finally {
-      setIsRecalibrating(false);
-    }
-  }
+  // Derived: which adjacent-variant layers to show when user requests recalibration
+  const adjLayers =
+    (calibration === 'too_basic' || calibration === 'too_advanced') && adjacentCards
+      ? adjacentCards[calibration]
+      : null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -492,31 +462,129 @@ export default function ExpandedView({
               {/* Feedback section */}
               <div className="mt-8">
                 {feedbackSubmitted ? (
-                  <div className="flex flex-col items-center py-6 gap-3">
-                    <span className="text-emerald-500 text-2xl">✓</span>
-                    <p className="text-sm text-slate-500">Thanks for your feedback</p>
-
-                    {/* Recalibration CTA — only for miscalibrated signals */}
-                    {(calibration === 'too_basic' || calibration === 'too_advanced') && !recalibrationDone && (
-                      isRecalibrating ? (
-                        <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-indigo-500 animate-spin mt-1" />
-                      ) : (
-                        <>
-                          {recalibrationFailed && (
-                            <p className="text-xs text-red-400">Couldn&apos;t adjust. Try again.</p>
-                          )}
+                  <div>
+                    {!recalibrationDone ? (
+                      // Thank-you + CTA to enter layer reader
+                      <div className="flex flex-col items-center py-6 gap-3">
+                        <span className="text-emerald-500 text-2xl">✓</span>
+                        <p className="text-sm text-slate-500">Thanks for your feedback</p>
+                        {adjLayers && (
                           <button
-                            onClick={fetchRecalibrated}
+                            onClick={() => {
+                              setRecalLayers(adjLayers);
+                              setRecalLayerIdx(0);
+                              setRecalibrationDone(true);
+                              logEvent({
+                                session_id: getSessionId(),
+                                event_type: 'recalibration_requested',
+                                component_type: null,
+                                card_variant: cardVariant,
+                                paper_title: paperTitle,
+                                paper_field: fieldGroup,
+                                normalised_score: normalisedScore,
+                                metadata: { calibrationSignal: calibration },
+                              });
+                            }}
                             className="text-sm text-indigo-600 font-medium underline underline-offset-2 mt-1"
                           >
                             See it adjusted for you &rarr;
                           </button>
-                        </>
-                      )
-                    )}
+                        )}
+                      </div>
+                    ) : (
+                      // Layer reader — shows adjacent-variant card layers one at a time
+                      <div className="mt-2">
+                        <p className="text-[10px] uppercase tracking-widest text-indigo-400 font-semibold mb-4">
+                          Adjusted version
+                        </p>
 
-                    {recalibrationDone && (
-                      <p className="text-xs text-slate-400 mt-1">Showing adjusted version</p>
+                        {recalLayers && recalLayers.slice(0, recalLayerIdx + 1).map((layer, idx) => (
+                          <div key={idx} className={idx > 0 ? 'mt-5 pt-5 border-t border-slate-100' : ''}>
+                            {layer.headline && (
+                              <p className="text-base font-semibold text-slate-800 leading-snug mb-2">
+                                {layer.headline}
+                              </p>
+                            )}
+                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                              {layer.body}
+                            </p>
+                          </div>
+                        ))}
+
+                        {/* Advance to next layer */}
+                        {recalLayers && recalLayerIdx < recalLayers.length - 1 && (
+                          <button
+                            onClick={() => setRecalLayerIdx(i => i + 1)}
+                            className="text-xs text-indigo-600 font-medium mt-4"
+                          >
+                            Continue reading &rarr;
+                          </button>
+                        )}
+
+                        {/* Second feedback form — shown after last layer */}
+                        {recalLayers && recalLayerIdx >= recalLayers.length - 1 && (
+                          <div className="mt-6 border-t border-slate-100 pt-5">
+                            {recalFeedbackSubmitted ? (
+                              <div className="flex flex-col items-center py-4 gap-1">
+                                <span className="text-emerald-500 text-xl">✓</span>
+                                <p className="text-xs text-slate-400">Thanks</p>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-sm font-semibold text-slate-700 mb-3">How did this feel?</p>
+                                <div className="flex gap-1 mb-4">
+                                  {[1, 2, 3, 4, 5].map(star => (
+                                    <button
+                                      key={star}
+                                      onMouseEnter={() => setRecalHoveredStar(star)}
+                                      onMouseLeave={() => setRecalHoveredStar(0)}
+                                      onClick={() => setRecalSuitability(star)}
+                                      className="text-2xl leading-none transition-colors"
+                                      aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                                    >
+                                      <span className={star <= (recalHoveredStar || recalSuitability) ? 'text-amber-400' : 'text-slate-300'}>★</span>
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="flex gap-2 flex-wrap">
+                                  {(['too_basic', 'just_right', 'too_advanced'] as const).map(val => (
+                                    <button
+                                      key={val}
+                                      onClick={() => setRecalCalibration(val)}
+                                      className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                                        recalCalibration === val ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                                      }`}
+                                    >
+                                      {val === 'too_basic' ? 'Too basic' : val === 'just_right' ? 'Just right' : 'Too advanced'}
+                                    </button>
+                                  ))}
+                                </div>
+                                <textarea
+                                  placeholder="Anything to add? (optional)"
+                                  value={recalOpenFeedback}
+                                  onChange={e => setRecalOpenFeedback(e.target.value)}
+                                  rows={3}
+                                  className="w-full text-sm border border-slate-200 rounded-xl p-3 mt-4 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                />
+                                <button
+                                  disabled={recalSuitability === 0 || recalCalibration === null}
+                                  onClick={() => {
+                                    onFeedbackSubmit(recalSuitability, recalCalibration!, recalOpenFeedback);
+                                    setRecalFeedbackSubmitted(true);
+                                  }}
+                                  className={`w-full py-2.5 rounded-xl text-sm font-medium mt-4 transition-colors ${
+                                    recalSuitability === 0 || recalCalibration === null
+                                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                      : 'bg-indigo-600 text-white'
+                                  }`}
+                                >
+                                  Submit
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -572,7 +640,16 @@ export default function ExpandedView({
                     <button
                       disabled={suitability === 0 || calibration === null}
                       onClick={() => {
-                        onFeedbackSubmit(suitability, calibration!, openFeedback);
+                        // For just_right, OR if edge case where no simpler/harder card exists: navigate immediately.
+                        // For too_basic / too_advanced (when available): show the adjusted card first;
+                        // onFeedbackSubmit is called after the second rating.
+                        const hasAdjacentCard = 
+                          (calibration === 'too_basic' && adjacentCards?.too_basic) || 
+                          (calibration === 'too_advanced' && adjacentCards?.too_advanced);
+
+                        if (calibration === 'just_right' || !hasAdjacentCard) {
+                          onFeedbackSubmit(suitability, calibration!, openFeedback);
+                        }
                         setFeedbackSubmitted(true);
                       }}
                       className={`w-full py-2.5 rounded-xl text-sm font-medium mt-4 transition-colors ${
