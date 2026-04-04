@@ -702,7 +702,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             {/* Feed card — collapsed view, tapping opens ExpandedView */}
             <FeedCard
                 paperTitle={paperTitle ?? ""}
-                hook={null}
+                hook={card.layers[0]?.headline ?? null}
                 previewText={card.layers[0]?.body ?? null}
                 componentType={componentType}
                 cardVariant={activeCardType}

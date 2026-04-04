@@ -63,9 +63,7 @@ export default function FeedCard({
   onExpand,
   visualHints,
 }: FeedCardProps) {
-  // Teaser text: prefer generated hook, fall back to first 100 chars of preview
-  const teaserText =
-    hook ?? (previewText ? previewText.slice(0, 100).trimEnd() + (previewText.length > 100 ? "…" : "") : null);
+  // No teaserText variable needed — hook is rendered as primary headline, previewText as teaser body
 
   return (
     <div
@@ -98,15 +96,22 @@ export default function FeedCard({
             <span className="text-xs text-slate-400">{componentType}</span>
           </div>
 
-          {/* Row 2 — paper title */}
-          <p className="text-sm font-semibold text-slate-800 leading-snug mt-2 line-clamp-2">
-            {paperTitle}
+          {/* Row 2 — personalised headline (Gemini hook for this card variant) */}
+          <p className="text-sm font-semibold text-slate-800 leading-snug mt-2 line-clamp-3">
+            {hook ?? paperTitle}
           </p>
 
-          {/* Row 3 — hook / preview teaser */}
-          {teaserText && (
-            <p className="text-sm text-slate-500 mt-1 line-clamp-2">
-              {teaserText}
+          {/* Row 2b — raw paper title as subtle source label (only when hook is shown) */}
+          {hook && paperTitle && (
+            <p className="text-xs text-slate-400 mt-0.5 leading-tight line-clamp-1">
+              {paperTitle}
+            </p>
+          )}
+
+          {/* Row 3 — preview body teaser */}
+          {previewText && (
+            <p className="text-sm text-slate-500 mt-1.5 line-clamp-2">
+              {previewText.slice(0, 150).trimEnd() + (previewText.length > 150 ? "…" : "")}
             </p>
           )}
 
