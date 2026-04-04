@@ -7,10 +7,10 @@ interface FeedbackFormProps {
     onSubmit: (calibration: CalibrationResponse, optionalFeedback: string) => Promise<void>;
 }
 
-const CALIBRATION_OPTIONS: CalibrationResponse[] = [
-    "Too basic",
-    "About right",
-    "Too advanced",
+const CALIBRATION_OPTIONS: { value: CalibrationResponse; label: string }[] = [
+    { value: "too_basic",    label: "Too basic" },
+    { value: "just_right",   label: "About right" },
+    { value: "too_advanced", label: "Too advanced" },
 ];
 
 export default function FeedbackForm({ onSubmit }: FeedbackFormProps) {
@@ -35,17 +35,17 @@ export default function FeedbackForm({ onSubmit }: FeedbackFormProps) {
             </p>
 
             <div className="flex flex-col gap-3 mb-8">
-                {CALIBRATION_OPTIONS.map((option) => (
+                {CALIBRATION_OPTIONS.map(({ value, label }) => (
                     <button
-                        key={option}
-                        onClick={() => setCalibration(option)}
+                        key={value}
+                        onClick={() => setCalibration(value)}
                         className={`w-full py-4 px-5 text-left rounded-xl border font-medium transition-all duration-150
-              ${calibration === option
+              ${calibration === value
                                 ? "border-indigo-500 bg-indigo-50 text-indigo-900"
                                 : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50"
                             }`}
                     >
-                        {option}
+                        {label}
                     </button>
                 ))}
             </div>
