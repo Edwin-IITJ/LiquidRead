@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { logEvent } from "@/utils/logEvent";
 import { getSessionId } from "@/utils/sessionId";
-import { AppState, Answer, CardType, CalibrationResponse, QuizState } from "@/types/quiz";
+import { AppState, Answer, QuizState } from "@/types/quiz";
 import { questions } from "@/data/questions";
 import { calculateScore } from "@/lib/scoring";
 import { submitToSheet } from "@/lib/submitData";
@@ -11,7 +11,6 @@ import ProgressBar from "./ProgressBar";
 import QuestionCard from "./QuestionCard";
 import CardDisplay from "./CardDisplay";
 import PersonaPanel from "./PersonaPanel";
-import ReflectionScreen, { ReflectionAnswers } from "./ReflectionScreen";
 import DemographicsScreen, { DemographicsAnswers } from "./DemographicsScreen";
 import ThankYou from "./ThankYou";
 import IntroScreen from "./IntroScreen";
@@ -33,8 +32,6 @@ const initialState: QuizState = {
     calibrationResponse: null,
     suitability: 0,
     openFeedback: "",
-    alternateCardShown: null,
-    alternateCardRating: "",
     paperTitle: "",
     generatedCardText: "",
 };
@@ -114,6 +111,8 @@ export default function QuizApp() {
                 ...s,
                 progressIndex: s.progressIndex - 1,
             }));
+        } else {
+            setState((s) => ({ ...s, appState: "demographics" }));
         }
     }
 
@@ -130,35 +129,51 @@ export default function QuizApp() {
         setTimeout(() => {
             setState((s) => ({ ...s, appState: "card" }));
         }, 0);
+        logEvent({
+            session_id: getSessionId(),
+            event_type: "session_start",
+            component_type: null,
+            card_variant: cardShown,
+            paper_title: null,
+            paper_field: state.fieldGroup ?? null,
+            normalised_score: normalisedScore,
+            participant: state.priorInterviewName ?? null,
+            metadata: {
+                rawScore,
+                fieldGroup: state.fieldGroup,
+                researchExperience: state.researchExperience,
+                readingFrequency: state.readingFrequency,
+                priorInterviewName: state.priorInterviewName,
+                q1: state.answers.q1?.label ?? null,
+                q2: state.answers.q2?.label ?? null,
+                q3: state.answers.q3?.label ?? null,
+                q4: state.answers.q4?.label ?? null,
+                q5: state.answers.q5?.label ?? null,
+                q6: state.answers.q6?.label ?? null,
+                q7: state.answers.q7?.label ?? null,
+                q9: state.answers.q9?.label ?? null,
+            }
+        });
     }
 
-    function handleCardProceed(response: CalibrationResponse, alternateShown: CardType | null, alternateRating: string, paperTitle: string, generatedCardText: string) {
-        setState((s) => ({
-            ...s,
-            appState: "reflection",
-            calibrationResponse: response,
-            alternateCardShown: alternateShown,
-            alternateCardRating: alternateRating,
-            paperTitle,
-            generatedCardText,
-        }));
-    }
-
-    async function handleReflectionSubmit(answers: ReflectionAnswers) {
+    async function handleCardProceed(suitability: number, calibration: 'too_basic' | 'just_right' | 'too_advanced', openFeedback: string, paperTitle: string) {
         logEvent({
             session_id: getSessionId(),
             event_type: "card_rated",
-            component_type: "NarrativeCard",
+            component_type: null,
             card_variant: state.cardShown,
-            paper_title: state.paperTitle || null,
-            paper_field: state.fieldGroup || null,
-            normalised_score: state.normalisedScore ?? null,
+            paper_title: paperTitle,
+            paper_field: state.fieldGroup ?? null,
+            normalised_score: state.normalisedScore,
+            calibration_signal: calibration,
+            suitability_rating: suitability,
             metadata: {
-                suitabilityRating: answers.suitability ?? null,
-                openFeedback: answers.openFeedback || null,
+                suitabilityRating: suitability,
+                calibrationSignal: calibration,
+                openFeedback: openFeedback ?? null,
             },
         });
-        // We capture the reflection answers, update state, and submit all data
+
         const payload = {
             timestamp: new Date().toISOString(),
             fieldGroup: state.fieldGroup,
@@ -174,19 +189,15 @@ export default function QuizApp() {
             q7: state.answers.q7?.label ?? "",
             q9: state.answers.q9?.label ?? "",
             field: state.field,
-            suitability: answers.suitability,
-            openFeedback: answers.openFeedback,
+            suitability,
+            openFeedback,
             rawScore: state.rawScore,
             normalisedScore: state.normalisedScore,
             cardShown: state.cardShown,
-            calibrationResponse: state.calibrationResponse ?? "",
-            alternateCardShown: state.alternateCardShown ?? "",
-            alternateCardRating: state.alternateCardRating,
-            paperTitle: state.paperTitle,
+            calibrationResponse: calibration,
+            paperTitle,
             generatedCardText: state.generatedCardText,
         };
-
-        setState(s => ({ ...s, suitability: answers.suitability, openFeedback: answers.openFeedback }));
 
         await submitToSheet(payload);
         if (typeof window !== "undefined") {
@@ -264,9 +275,6 @@ export default function QuizApp() {
         return <QuizWrapper><ThankYou /></QuizWrapper>;
     }
 
-    if (state.appState === "reflection") {
-        return <QuizWrapper><ReflectionScreen onSubmit={handleReflectionSubmit} /></QuizWrapper>;
-    }
 
     if (state.appState === "demographics") {
         return (
@@ -294,14 +302,12 @@ export default function QuizApp() {
         <QuizWrapper>
             <div>
                 <div className="h-6 mb-2">
-                    {state.progressIndex > 0 && (
-                        <button
-                            onClick={handleBack}
-                            className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1"
-                        >
-                            &larr; Back
-                        </button>
-                    )}
+                    <button
+                        onClick={handleBack}
+                        className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1"
+                    >
+                        &larr; Back
+                    </button>
                 </div>
                 <ProgressBar current={state.progressIndex + 1} total={questions.length} />
                 <p className="text-xs text-slate-400 italic mt-1 mb-4 fade-in font-serif">

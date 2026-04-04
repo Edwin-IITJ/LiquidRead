@@ -54,7 +54,7 @@ export default function PersonaPanel({ cardType, field, readingGoal, timeAvailab
     const [personaDraft, setPersonaDraft] = useState(basePersona);
     const [userContext, setUserContext] = useState("");
     const [isOpen, setIsOpen] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
 
     useEffect(() => {
         const savedPersona = typeof window !== "undefined" ? localStorage.getItem("mtp-persona-override") : null;
@@ -131,16 +131,7 @@ export default function PersonaPanel({ cardType, field, readingGoal, timeAvailab
                             <div className="relative bg-white border border-slate-200 rounded-xl p-4 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)]">
                                 {!isEditingPersona ? (
                                     <>
-                                        <p className="text-sm text-slate-600 leading-relaxed pr-6">{personaText}</p>
-                                        <button
-                                            onClick={() => { setPersonaDraft(personaText); setIsEditingPersona(true); }}
-                                            className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 transition-colors"
-                                            title="Edit your persona"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                            </svg>
-                                        </button>
+                                        <p className="text-sm text-slate-600 leading-relaxed">{personaText}</p>
                                     </>
                                 ) : (
                                     <div className="flex flex-col gap-3">
@@ -175,6 +166,7 @@ export default function PersonaPanel({ cardType, field, readingGoal, timeAvailab
                                     onChange={(e) => handleContextChange(e.target.value)}
                                     placeholder="Anything that helps — your current project, preferences, pet hates."
                                     className="w-full h-[100px] text-sm text-slate-700 border-none resize-none focus:outline-none p-3 bg-transparent placeholder:text-slate-400"
+                                    disabled
                                 />
                                 <div className="px-3 pb-2 text-right">
                                     <span className="text-[10px] text-slate-400 font-medium">

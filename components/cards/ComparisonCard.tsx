@@ -35,11 +35,11 @@ export default function ComparisonCard({ layer, card, visualHints }: ComparisonC
         return (
             <div className="flex flex-col gap-3">
                 {currentLayer.headline && (
-                    <h3 className="text-base font-semibold text-slate-800 leading-snug">
+                    <h3 className="text-base font-semibold text-slate-800 leading-snug font-serif">
                         {currentLayer.headline}
                     </h3>
                 )}
-                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line font-serif">
                     {currentLayer.body}
                 </p>
             </div>
@@ -54,7 +54,7 @@ export default function ComparisonCard({ layer, card, visualHints }: ComparisonC
     return (
         <div className="flex flex-col gap-3">
             {currentLayer.headline && (
-                <h3 className="text-base font-semibold text-slate-800 leading-snug">
+                <h3 className="text-base font-semibold text-slate-800 leading-snug font-serif">
                     {currentLayer.headline}
                 </h3>
             )}
@@ -63,7 +63,7 @@ export default function ComparisonCard({ layer, card, visualHints }: ComparisonC
                     <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
                         {visualHints.comparisonLeft}
                     </span>
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                    <p className="text-sm text-slate-600 leading-relaxed font-serif">
                         {leftText}
                     </p>
                 </div>
@@ -71,7 +71,7 @@ export default function ComparisonCard({ layer, card, visualHints }: ComparisonC
                     <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
                         {visualHints.comparisonRight}
                     </span>
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                    <p className="text-sm text-slate-600 leading-relaxed font-serif">
                         {rightText}
                     </p>
                 </div>

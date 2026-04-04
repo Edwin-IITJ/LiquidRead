@@ -4,7 +4,7 @@ export type CardType = 'A' | 'B' | 'C';
 
 export type OptionId = 'A' | 'B' | 'C' | 'D';
 
-export type CalibrationResponse = 'Too basic' | 'About right' | 'Too advanced';
+export type CalibrationResponse = 'too_basic' | 'just_right' | 'too_advanced';
 
 export interface Option {
   id: OptionId;
@@ -41,8 +41,6 @@ export interface QuizState {
   suitability: number;
   openFeedback: string;
   priorInterviewName: string;
-  alternateCardShown: CardType | null;
-  alternateCardRating: string;
   paperTitle: string;
   generatedCardText: string;
 }
@@ -68,6 +66,6 @@ export interface SheetPayload {
   suitability: number;
   openFeedback: string;
   priorInterviewName: string;
-  alternateCardShown: string; // Stored as string or empty in payload
-  alternateCardRating: string;
+  paperTitle: string;
+  generatedCardText: string;
 }

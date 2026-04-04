@@ -5,12 +5,18 @@
   --font-serif: var(--font-serif);
 }
 
+:root {
+  /* Semantic alias for card editorial content */
+  --font-display: var(--font-serif);
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
-  font-family: var(--font-sans);
+  /* DM Sans — default for all app UI */
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 /* Fade transition between questions */

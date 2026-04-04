@@ -6,6 +6,11 @@ import { fieldMap, FieldGroup } from "@/utils/fieldMap";
 import { reconstructAbstract } from "@/utils/reconstructAbstract";
 import allSubfields from "@/utils/subfieldMap";
 
+// Strip HTML tags that OpenAlex occasionally embeds in titles/abstracts
+function stripHtml(str: string): string {
+    return str.replace(/<[^>]*>/g, "");
+}
+
 const MAILTO = "edwinmeleth@gmail.com";
 const BASE_FILTERS = [
     "has_abstract:true",
@@ -101,6 +106,7 @@ interface Paper {
     journal: string;
     year: number;
     authors: string;
+    doi?: string | null;
 }
 
 interface OpenAlexWork {
@@ -190,11 +196,12 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | 
             : "Unknown Authors";
 
     return {
-        title: work.title ?? "Unknown Title",
+        title: stripHtml(work.title ?? "Unknown Title"),
         abstract: reconstructAbstract(work.abstract_inverted_index ?? {}),
         year: work.publication_year ?? 0,
         journal: work.primary_location?.source?.display_name ?? "Unknown Journal",
         authors,
+        doi: work.doi ?? null,
     };
 }
 
@@ -246,10 +253,10 @@ userPersona calibrates tone.
 A=accessible, C=technical.`;
 
     const paperText = `PAPER:
-Title: ${paper.title}
+Title: ${stripHtml(paper.title)}
 Journal: ${paper.journal}, ${paper.year}
 Authors: ${paper.authors}
-Abstract: ${paper.abstract}`;
+Abstract: ${stripHtml(paper.abstract)}`;
 
     const taskAndSchema = `Gen 3 cards. body≥20chars.
 A:0,Preview(hook+teaser) 1,The story(plain+stat) 2,How they found it(method+link)
@@ -450,7 +457,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "generation_failed" }, { status: 500 });
         }
 
-        return NextResponse.json({ ...(cards as Record<string, unknown>), paperTitle: paper.title }, { status: 200 });
+        return NextResponse.json({ ...(cards as Record<string, unknown>), paperTitle: stripHtml(paper.title), paperAbstract: stripHtml(paper.abstract), doi: paper.doi ?? null }, { status: 200 });
 
     } catch (error) {
         console.error("Error in generate-card route:", error);

@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { CardType, CalibrationResponse } from "@/types/quiz";
-import NarrativeCard from "@/components/cards/NarrativeCard";
-import StatsCard from "@/components/cards/StatsCard";
-import ComparisonCard from "@/components/cards/ComparisonCard";
+import { CardType } from "@/types/quiz";
 import { logEvent } from "@/utils/logEvent";
 import { getSessionId } from "@/utils/sessionId";
+import ExpandedView from "@/components/ExpandedView";
+import FeedCard from "@/components/FeedCard";
 
 interface CardDisplayProps {
     cardType: CardType;
@@ -18,7 +17,7 @@ interface CardDisplayProps {
     researchInterest?: string;
     confusionResponse?: string;
     normalisedScore?: number;
-    onProceed: (response: CalibrationResponse, alternateShown: CardType | null, alternateRating: string, paperTitle: string, generatedCardText: string) => void;
+    onProceed: (suitability: number, calibration: 'too_basic' | 'just_right' | 'too_advanced', openFeedback: string, paperTitle: string) => void;
 }
 
 // ─── Card Content ────────────────────────────────────────────────────────────
@@ -557,17 +556,14 @@ function mapTrustAnchor(q9Answer: string | undefined): string {
 }
 
 export default function CardDisplay({ cardType, fieldGroup, readingComfort, readingGoal, timeAvailable, trustAnchor, researchInterest, confusionResponse, normalisedScore, onProceed }: CardDisplayProps) {
-    const [layer, setLayer] = useState(0);
-    const [maxRevealedLayer, setMaxRevealedLayer] = useState(0);
-    const [showCard, setShowCard] = useState(false);
-
     // AI-generated card state
     type CardContent = typeof DEFAULT_PAPER["A"];
     const [allGeneratedCards, setAllGeneratedCards] = useState<{ A: CardContent; B: CardContent; C: CardContent } | null>(null);
     const [paperTitle, setPaperTitle] = useState<string | null>(null);
-    const [generatedCardText, setGeneratedCardText] = useState<string>("");
+    const [paperAbstract, setPaperAbstract] = useState<string | null>(null);
+    const [paperDoi, setPaperDoi] = useState<string | null>(null);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    // hasError is tracked for diagnostics; UI silently falls back to DEFAULT_PAPER
     const [hasError, setHasError] = useState(false);
     const hasCalledRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
@@ -584,22 +580,14 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         comparisonLeft: null,
         comparisonRight: null,
     });
-    const layerEnteredAt = useRef<number>(Date.now());
-
-    const [calibration, setCalibration] = useState<CalibrationResponse | null>(null);
-    const [showAlternatePrompt, setShowAlternatePrompt] = useState(false);
-    const [isShowingAlternate, setIsShowingAlternate] = useState(false);
-    const [alternateCardType, setAlternateCardType] = useState<CardType | null>(null);
-    const [alternateRating, setAlternateRating] = useState("");
 
     // Determine which paper content and card data to display
     const paper = PAPER_CONTENT[fieldGroup as keyof typeof PAPER_CONTENT]
         ?? PAPER_CONTENT.default;
-    const activeCardType = isShowingAlternate && alternateCardType ? alternateCardType : cardType;
+    const activeCardType = cardType;
     const baseCard = paper[activeCardType];
-    // Use Gemini-generated card for both primary and alternate views when available
+    // Use Gemini-generated card when available
     const card = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
-    const isMaxLayer = layer >= card.maxLayer;
 
     const generateCardContent = async () => {
         setIsLoading(true);
@@ -637,7 +625,8 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             const data = await res.json();
             setAllGeneratedCards({ A: data.A, B: data.B, C: data.C });
             setPaperTitle(data.paperTitle ?? null);
-            setGeneratedCardText(JSON.stringify(data[cardType]?.layers));
+            setPaperAbstract(data.paperAbstract ?? null);
+            setPaperDoi(data.doi ?? null);
             if (data.componentType) setComponentType(data.componentType);
             if (data.visualHints) setVisualHints(data.visualHints);
             logEvent({
@@ -685,116 +674,10 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    useEffect(() => {
-        const timer = setTimeout(() => setShowCard(true), 1000);
-        return () => clearTimeout(timer);
-    }, []);
-
-    function handleReadMore() {
-        if (!isMaxLayer) {
-            const newLayerIndex = layer + 1;
-            const elapsed = Date.now() - layerEnteredAt.current;
-            logEvent({
-                session_id: getSessionId(),
-                event_type: "layer_change",
-                component_type: componentType,
-                card_variant: cardType,
-                paper_title: paperTitle,
-                layer_reached: newLayerIndex,
-                time_on_layer_ms: elapsed,
-                paper_field: fieldGroup ?? null,
-            });
-            layerEnteredAt.current = Date.now();
-            setLayer((l) => l + 1);
-            setMaxRevealedLayer((m) => Math.max(m, layer + 1));
-        }
-    }
-
-    function handleTabChange(newLayerIndex: number) {
-        const elapsed = Date.now() - layerEnteredAt.current;
-        logEvent({
-            session_id: getSessionId(),
-            event_type: "tab_change",
-            component_type: componentType,
-            card_variant: cardType,
-            paper_title: paperTitle,
-            layer_reached: newLayerIndex,
-            time_on_layer_ms: elapsed,
-            paper_field: fieldGroup ?? null,
-        });
-        layerEnteredAt.current = Date.now();
-        setLayer(newLayerIndex);
-    }
-
-    function handleCalibrationSelect(response: CalibrationResponse) {
-        setCalibration(response);
-
-        if (response === "About right") {
-            // Proceed immediately
-            onProceed(response, null, "", paperTitle ?? "", generatedCardText);
-        } else {
-            // Show follow-up prompt
-            setShowAlternatePrompt(true);
-        }
-    }
-
-    function handleShowAlternate() {
-        // Determine alternate card
-        // if original was B or C -> show A; if original was A -> show C
-        const nextCard: CardType = (cardType === "B" || cardType === "C") ? "A" : "C";
-        setAlternateCardType(nextCard);
-
-        // Reset view state for the new card
-        setLayer(0);
-        setMaxRevealedLayer(0);
-        setShowCard(false);
-        setShowAlternatePrompt(false);
-        setIsShowingAlternate(true);
-        setAlternateRating("");
-
-        // Trigger fade in animation again
-        setTimeout(() => setShowCard(true), 50);
-    }
-
-    function handleSkipAlternate() {
-        // User clicked "No, continue"
-        logEvent({
-            session_id: getSessionId(),
-            event_type: "alternate_requested",
-            component_type: componentType,
-            card_variant: cardType,
-            paper_title: paperTitle,
-            paper_field: fieldGroup ?? null,
-            normalised_score: normalisedScore ?? null,
-            metadata: {
-                alternateShown: null,
-                alternateRating: null,
-            },
-        });
-        onProceed(calibration!, null, "", paperTitle ?? "", generatedCardText);
-    }
-
-    function handleAlternateRating(rating: string) {
-        setAlternateRating(rating);
-        logEvent({
-            session_id: getSessionId(),
-            event_type: "alternate_requested",
-            component_type: componentType,
-            card_variant: cardType,
-            paper_title: paperTitle,
-            paper_field: fieldGroup ?? null,
-            normalised_score: normalisedScore ?? null,
-            metadata: {
-                alternateShown: alternateCardType ?? null,
-                alternateRating: rating ?? null,
-            },
-        });
-        onProceed(calibration!, alternateCardType, rating, paperTitle ?? "", generatedCardText);
-    }
-
     // Suppress unused variables from deprecated error UI
     void error;
     void setError;
+    void hasError;
 
     // Show spinner while Gemini is generating
     if (isLoading && !allGeneratedCards && !error) {
@@ -806,46 +689,8 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         );
     }
 
-    // Suppress unused variable warning — hasError is kept for diagnostics
-    void hasError;
-
-    if (showAlternatePrompt) {
-        const promptText = calibration === "Too advanced"
-            ? "Would you like to see a simpler version?"
-            : "Would you like to see a more detailed version?";
-
-        return (
-            <div className="max-w-2xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[50vh] fade-in">
-                <p className="text-lg font-medium text-slate-800 mb-8 font-serif text-center">
-                    {promptText}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-                    <button
-                        onClick={handleShowAlternate}
-                        className="flex-1 py-3 px-6 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors"
-                    >
-                        Yes, show me
-                    </button>
-                    <button
-                        onClick={handleSkipAlternate}
-                        className="flex-1 py-3 px-6 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
-                    >
-                        No, continue
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    function resolveCardComponent(type: string) {
-        switch (type) {
-            case "StatsCard":      return StatsCard;
-            case "ComparisonCard": return ComparisonCard;
-            default:               return NarrativeCard;
-        }
-    }
-
     return (
+        <>
         <div className="flex-1 w-full h-full px-4 py-6 md:p-8 flex flex-col items-center overflow-y-auto">
 
             {isFallback && (
@@ -854,106 +699,41 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                 </div>
             )}
 
-            {showCard && (
-                <div className="w-full max-w-[480px] shrink-0 rounded-xl border border-slate-200/60 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-4 p-5 scale-fade-in mb-8">
-
-                    {/* 1. Context text */}
-                    <p className="text-[13px] text-slate-500 italic">
-                        {isShowingAlternate
-                            ? "Here is the alternate version."
-                            : "Based on your responses, here's how this paper was framed for someone like you."}
-                    </p>
-
-                    {/* 2. Tabs */}
-                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
-                        {card.layers.map((l, i: number) => {
-                            const isActive = i === layer;
-                            const isRevealed = i <= maxRevealedLayer;
-                            return (
-                                <button
-                                    key={i}
-                                    onClick={() => isRevealed && handleTabChange(i)}
-                                    className={`shrink-0 text-xs font-semibold px-4 py-1.5 rounded-full transition-all ${isActive
-                                        ? "bg-slate-900 text-white"
-                                        : isRevealed
-                                            ? "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                            : "bg-slate-100/50 text-slate-400 cursor-default opacity-70"
-                                        }`}
-                                >
-                                    {l.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* 3. Content */}
-                    <div className="fade-in mt-1" key={layer}>
-                        {(() => {
-                            const CardComponent = resolveCardComponent(componentType);
-                            return (
-                                <CardComponent
-                                    layer={layer}
-                                    card={card}
-                                    visualHints={visualHints}
-                                />
-                            );
-                        })()}
-                    </div>
-
-                    {/* 4. Actions */}
-                    <div className="mt-2 flex flex-col gap-3">
-                        {!isMaxLayer && (
-                            <button
-                                onClick={handleReadMore}
-                                className="w-full py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:border-slate-300 hover:bg-slate-50 transition-all font-sans"
-                            >
-                                Read more →
-                            </button>
-                        )}
-                        {isMaxLayer && maxRevealedLayer >= card.maxLayer && !isShowingAlternate && (
-                            <div className="flex flex-col gap-2 fade-in mt-2 border-t border-slate-100 pt-4">
-                                <p className="text-sm font-semibold text-slate-700 mb-2 text-center font-sans tracking-tight">
-                                    How did this feel?
-                                </p>
-                                <button
-                                    onClick={() => handleCalibrationSelect("Too basic")}
-                                    className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-sans"
-                                >
-                                    Too basic
-                                </button>
-                                <button
-                                    onClick={() => handleCalibrationSelect("About right")}
-                                    className="w-full py-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-medium text-sm hover:border-indigo-500 hover:bg-indigo-100 transition-all font-sans"
-                                >
-                                    About right
-                                </button>
-                                <button
-                                    onClick={() => handleCalibrationSelect("Too advanced")}
-                                    className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-sans"
-                                >
-                                    Too advanced
-                                </button>
-                            </div>
-                        )}
-                        {isMaxLayer && isShowingAlternate && (
-                            <div className="flex flex-col gap-2 fade-in mt-2 border-t border-slate-100 pt-4">
-                                <p className="text-sm font-semibold text-slate-700 mb-2 text-center font-sans tracking-tight">
-                                    How does this version feel compared to the first?
-                                </p>
-                                {["Much better", "Somewhat better", "About the same", "Worse"].map((rating) => (
-                                    <button
-                                        key={rating}
-                                        onClick={() => handleAlternateRating(rating)}
-                                        className="w-full py-3 rounded-xl border border-slate-200 text-slate-700 font-medium text-sm hover:border-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition-all font-sans"
-                                    >
-                                        {rating}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* Feed card — collapsed view, tapping opens ExpandedView */}
+            <FeedCard
+                paperTitle={paperTitle ?? ""}
+                hook={null}
+                previewText={card.layers[0]?.body ?? null}
+                componentType={componentType}
+                cardVariant={activeCardType}
+                fieldGroup={fieldGroup ?? ""}
+                isLoading={isLoading}
+                onExpand={() => setIsExpanded(true)}
+                visualHints={{
+                    keyStat: visualHints.keyStat,
+                    keyStatLabel: visualHints.keyStatLabel,
+                }}
+            />
         </div>
+
+        {/* Expanded view bottom sheet — always in DOM, slides up on FeedCard tap */}
+        <ExpandedView
+            isOpen={isExpanded}
+            onClose={() => setIsExpanded(false)}
+            paperTitle={paperTitle ?? ""}
+            paperAbstract={paperAbstract ?? ""}
+            paperDoi={paperDoi ?? null}
+            cardVariant={activeCardType}
+            normalisedScore={normalisedScore ?? 5}
+            readingGoal={readingGoal ?? ""}
+            timeAvailable={timeAvailable ?? ""}
+            confusionResponse={confusionResponse ?? ""}
+            trustAnchor={trustAnchor ?? ""}
+            fieldGroup={fieldGroup ?? ""}
+            onFeedbackSubmit={(suitability, calibration, openFeedback) => {
+                onProceed(suitability, calibration, openFeedback, paperTitle ?? "");
+            }}
+        />
+        </>
     );
 }

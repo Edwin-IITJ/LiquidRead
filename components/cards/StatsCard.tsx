@@ -31,7 +31,7 @@ export default function StatsCard({ layer, card, visualHints }: StatsCardProps) 
     return (
         <div className="flex flex-col gap-3">
             {currentLayer.headline && (
-                <h3 className="text-base font-semibold text-slate-800 leading-snug">
+                <h3 className="text-base font-semibold text-slate-800 leading-snug font-serif">
                     {currentLayer.headline}
                 </h3>
             )}
@@ -50,7 +50,7 @@ export default function StatsCard({ layer, card, visualHints }: StatsCardProps) 
                 </div>
             )}
 
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line font-serif">
                 {currentLayer.body}
             </p>
         </div>
