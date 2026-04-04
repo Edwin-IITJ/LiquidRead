@@ -57,7 +57,7 @@ export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }
             <div className="space-y-8">
                 {/* Q-D1 */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2 font-serif">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                         What is your primary field of study or work?
                     </label>
                     <select
@@ -79,7 +79,7 @@ export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }
 
                 {/* Q-D2 */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-3 font-serif">
+                    <label className="block text-sm font-medium text-slate-700 mb-3">
                         How comfortable are you reading academic research?
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -103,7 +103,7 @@ export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }
 
                 {/* Q-D3 */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-3 font-serif">
+                    <label className="block text-sm font-medium text-slate-700 mb-3">
                         How often do you typically read research papers?
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -127,7 +127,7 @@ export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }
 
                 {/* Q-D4 Optional Interview Name */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2 font-serif">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                         Have you been interviewed as part of this research before? If yes, enter the name you used.
                     </label>
                     <p className="text-xs text-slate-400 mb-3">

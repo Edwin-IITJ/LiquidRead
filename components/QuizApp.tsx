@@ -310,7 +310,7 @@ export default function QuizApp() {
                     </button>
                 </div>
                 <ProgressBar current={state.progressIndex + 1} total={questions.length} />
-                <p className="text-xs text-slate-400 italic mt-1 mb-4 fade-in font-serif">
+                <p className="text-xs text-slate-400 italic mt-1 mb-4 fade-in">
                     Answer honestly, your responses shape what you see at the end.
                 </p>
                 <div className="mt-8 fade-in" key={state.progressIndex}>

@@ -24,7 +24,7 @@ export default function QuestionCard({
 
     return (
         <div>
-            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-6 font-serif">
+            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-6">
                 {question.text}
             </h2>
 

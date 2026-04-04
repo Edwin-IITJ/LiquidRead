@@ -106,6 +106,7 @@ interface Paper {
     journal: string;
     year: number;
     authors: string;
+    pmcid?: string | null;
     doi?: string | null;
 }
 
@@ -115,6 +116,7 @@ interface OpenAlexWork {
     publication_year?: number;
     cited_by_count?: number;
     doi?: string;
+    ids?: { pmcid?: string; pmid?: string };
     primary_location?: {
         source?: { display_name?: string };
         landing_page_url?: string;
@@ -151,7 +153,7 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | 
         `?filter=${filterString}` +
         (fieldId === null ? `&search=${encodeURIComponent(fieldGroup)}` : "") +
         sortString +
-        `&select=title,abstract_inverted_index,publication_year,cited_by_count,doi,primary_location,authorships` +
+        `&select=title,abstract_inverted_index,publication_year,cited_by_count,doi,ids,primary_location,authorships` +
         `&per_page=10` +
         `&mailto=${MAILTO}`;
 
@@ -201,13 +203,135 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | 
         year: work.publication_year ?? 0,
         journal: work.primary_location?.source?.display_name ?? "Unknown Journal",
         authors,
+        pmcid: work.ids?.pmcid ?? null,
         doi: work.doi ?? null,
     };
 }
 
+// ─── Full text fetch (PMC → Europe PMC fallback) ──────────────────────────────
+
+type FullText = { methods: string | null; results: string | null; discussion: string | null };
+
+async function fetchFullText(pmcid: string): Promise<FullText | null> {
+    try {
+        // Extract numeric ID — input may be a URL or bare "PMC1234567"
+        const match = pmcid.match(/PMC(\d+)/i);
+        if (!match) {
+            console.warn('fetchFullText: could not extract PMC ID from', pmcid);
+            return null;
+        }
+        const pmcToken = `PMC${match[1]}`;
+        console.log('fetchFullText: raw pmcid received:', pmcid, '| extracted token:', pmcToken);
+
+        let xml: string | null = null;
+
+        // --- Attempt 1: NIH Entrez eFetch ---
+        console.log('fetchFullText: attempting NIH eFetch for', pmcToken);
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 6000);
+            const res = await fetch(
+                `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=${pmcToken}&rettype=full&retmode=xml&tool=liquidread&email=${MAILTO}`,
+                { signal: ctrl.signal }
+            );
+            clearTimeout(timer);
+            if (res.ok) {
+                const text = await res.text();
+                // Treat as failure if the XML contains an error element
+                if (!text.slice(0, 500).includes('<error>')) {
+                    xml = text;
+                }
+            }
+        } catch (e) {
+            console.warn('fetchFullText: NIH eFetch failed, trying Europe PMC:', (e as Error).message);
+        }
+
+        // --- Attempt 2: Europe PMC fallback ---
+        if (!xml) {
+            console.log('fetchFullText: NIH eFetch did not yield XML, attempting Europe PMC for', pmcToken);
+            try {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 6000);
+                const res = await fetch(
+                    `https://www.ebi.ac.uk/europepmc/webservices/rest/${pmcToken}/fullTextXML`,
+                    { signal: ctrl.signal }
+                );
+                clearTimeout(timer);
+                if (res.ok) {
+                    xml = await res.text();
+                }
+            } catch (e) {
+                console.warn('fetchFullText: Europe PMC also failed:', (e as Error).message);
+            }
+        }
+
+        if (!xml) return null;
+
+        // --- Section extraction helpers ---
+        function extractSection(xml: string, ...patterns: RegExp[]): string | null {
+            for (const pattern of patterns) {
+                const m = xml.match(pattern);
+                if (m && m[1]) {
+                    const raw = m[1]
+                        .replace(/<[^>]+>/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .slice(0, 1500);
+                    if (raw.length >= 50) return raw;
+                }
+            }
+            return null;
+        }
+
+        // sec-type attribute match OR title keyword match
+        // We capture everything from the opening <sec> tag to the pairing </sec>
+        // (greedy-safe: match to the FIRST </sec> that closes our sec, approximated by a
+        //  non-greedy .+? capped — good enough for 1500-char truncation use case)
+        const methods = extractSection(
+            xml,
+            /<sec[^>]*sec-type=["'][^"']*method[^"']*["'][^>]*>([\s\S]*?)<\/sec>/i,
+            /<sec[^>]*>\s*<title[^>]*>[^<]*method[^<]*<\/title>([\s\S]*?)<\/sec>/i
+        );
+
+        const results = extractSection(
+            xml,
+            /<sec[^>]*sec-type=["'][^"']*result[^"']*["'][^>]*>([\s\S]*?)<\/sec>/i,
+            /<sec[^>]*>\s*<title[^>]*>[^<]*result[^<]*<\/title>([\s\S]*?)<\/sec>/i
+        );
+
+        // Discussion: may match multiple sec types — concatenate up to combined 1500 chars
+        const discussionPatterns = [
+            /<sec[^>]*sec-type=["'][^"']*(discussion|conclusions?|limitations?)[^"']*["'][^>]*>([\s\S]*?)<\/sec>/gi,
+            /<sec[^>]*>\s*<title[^>]*>[^<]*(discussion|limitation|conclusion)[^<]*<\/title>([\s\S]*?)<\/sec>/gi,
+        ];
+        let discussionRaw = '';
+        for (const pat of discussionPatterns) {
+            let m;
+            while ((m = pat.exec(xml)) !== null && discussionRaw.length < 1500) {
+                const chunk = (m[2] ?? m[1] ?? '')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (chunk) discussionRaw += (discussionRaw ? ' ' : '') + chunk;
+            }
+        }
+        const discussion = discussionRaw.length >= 50
+            ? discussionRaw.slice(0, 1500)
+            : null;
+
+        if (!methods && !results && !discussion) return null;
+
+        return { methods, results, discussion };
+    } catch (err) {
+        console.error('fetchFullText: unexpected error:', err);
+        return null;
+    }
+}
+
 function buildPromptParts(
     userProfile: UserProfile,
-    paper: Paper
+    paper: Paper,
+    fullText?: FullText | null
 ): { systemInstructionText: string; dynamicPrompt: string } {
     const philosophy = `PHILOSOPHY:
 You believe research belongs to everyone, not just specialists.
@@ -252,11 +376,28 @@ userContext overrides all.
 userPersona calibrates tone.
 A=accessible, C=technical.`;
 
-    const paperText = `PAPER:
+    let paperText = `PAPER:
 Title: ${stripHtml(paper.title)}
 Journal: ${paper.journal}, ${paper.year}
 Authors: ${paper.authors}
 Abstract: ${stripHtml(paper.abstract)}`;
+
+    if (fullText?.results) {
+        paperText += `\nResults (from full paper):\n${fullText.results}`;
+    }
+    if (fullText?.methods) {
+        paperText += `\nMethods (from full paper):\n${fullText.methods}`;
+    }
+    if (fullText?.discussion) {
+        paperText += `\nDiscussion/Limitations (from full paper):\n${fullText.discussion}`;
+    }
+
+    const fullTextRules = fullText
+        ? `\n\nFULL TEXT USAGE RULES:
+- Card A: Use abstract only. Ignore any full text sections below.
+- Card B: If Results section is provided, use it to add one specific quantitative detail to "The finding" layer. Keep the writing accessible. Do not paste raw numbers without explaining them in plain English.
+- Card C: Use Methods, Results, and Discussion sections where provided. Card C readers want precision — include specific numbers, named techniques, and stated limitations. Still write clearly; do not copy-paste raw XML artefacts.`
+        : '';
 
     const taskAndSchema = `Gen 3 cards. body≥20chars.
 A:0,Preview(hook+teaser) 1,The story(plain+stat) 2,How they found it(method+link)
@@ -286,7 +427,7 @@ Rules for visualHints:
 - keyStat: short number or percentage string only (e.g. "27%", "1,795", "44"). null if no single dominant stat exists.
 - keyStatLabel: plain English label for keyStat, max 8 words. null if keyStat is null.
 - comparisonLeft + comparisonRight: short column label strings for ComparisonCard only (e.g. "Lecanemab group", "Placebo group"). null for all other component types.
-- confidence: float 0.0 to 1.0`;
+- confidence: float 0.0 to 1.0${fullTextRules}`;
 
     const dynamicPrompt = `${userProfileText}\n\n${personalisationInstructions}\n\n${paperText}\n\n${taskAndSchema}`;
 
@@ -297,7 +438,8 @@ Rules for visualHints:
         paper: paperText.length,
         taskAndSchema: taskAndSchema.length,
         totalDynamicChars: dynamicPrompt.length,
-        totalChars: systemInstructionText.length + dynamicPrompt.length
+        totalChars: systemInstructionText.length + dynamicPrompt.length,
+        fullTextSections: { methods: !!fullText?.methods, results: !!fullText?.results, discussion: !!fullText?.discussion },
     });
 
     return { systemInstructionText, dynamicPrompt };
@@ -386,9 +528,21 @@ export async function POST(request: Request) {
             paper = FALLBACK_PAPER;
         }
 
+        // Step 2b — Attempt full-text fetch from PMC
+        let fullText: FullText | null = null;
+        if (paper.pmcid) {
+            fullText = await fetchFullText(paper.pmcid);
+            console.log('FULL TEXT STATUS:', {
+                pmcid: paper.pmcid,
+                methods: !!fullText?.methods,
+                results: !!fullText?.results,
+                discussion: !!fullText?.discussion,
+            });
+        }
+
         // Step 3 — Call Gemini API (single call for all three card types)
 
-        const { systemInstructionText, dynamicPrompt } = buildPromptParts(userProfile, paper);
+        const { systemInstructionText, dynamicPrompt } = buildPromptParts(userProfile, paper, fullText);
 
         console.log('PAPER SENT TO GEMINI:', {
             title: paper.title,

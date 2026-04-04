@@ -35,7 +35,7 @@ export default function ReflectionScreen({ onSubmit }: ReflectionScreenProps) {
         <div>
             <ProgressBar current={1} total={1} label="Complete" />
             <div className="mt-8 fade-in">
-                <h2 className="text-lg font-semibold text-slate-900 mb-1 font-serif">
+                <h2 className="text-lg font-semibold text-slate-900 mb-1">
                     Two quick follow-up questions
                 </h2>
                 <p className="text-sm text-slate-500 mb-6">

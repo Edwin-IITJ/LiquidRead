@@ -5,7 +5,7 @@ export default function IntroScreen({ onStart }: { onStart: () => void }) {
                 <div className="text-xs uppercase tracking-widest text-slate-400">
                     Master's Thesis Research &middot; School Of Design, IIT Jodhpur
                 </div>
-                <h1 className="text-2xl font-semibold text-slate-900 mt-4 font-serif">
+                <h1 className="text-2xl font-semibold text-slate-900 mt-4">
                     How should research papers be presented to you?
                 </h1>
                 <p className="text-base text-slate-600 mt-4 leading-relaxed max-w-prose">
