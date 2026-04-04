@@ -27,13 +27,13 @@ interface RecalibratedRequestBody {
 
 interface VisualSpec {
   visualType:
-    | "StatCallout"
-    | "ProportionStrip"
-    | "DumbbellStrip"
-    | "ComparisonTable"
-    | "SlopeStrip"
-    | "StepDiagram"
-    | "RankStrip";
+  | "StatCallout"
+  | "ProportionStrip"
+  | "DumbbellStrip"
+  | "ComparisonTable"
+  | "SlopeStrip"
+  | "StepDiagram"
+  | "RankStrip";
   data: Record<string, unknown>;
   caption: string | null;
 }
@@ -446,7 +446,7 @@ export async function POST(request: Request) {
             temperature: 0.7,
             maxOutputTokens: 8192,
             thinkingConfig: {
-              thinkingBudget: 5000,
+              thinkingBudget: 0,
             },
           },
         }),
