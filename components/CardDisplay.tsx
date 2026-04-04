@@ -580,14 +580,21 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         comparisonLeft: null,
         comparisonRight: null,
     });
+    // Generic (non-personalised) card toggle
+    const [genericCard, setGenericCard] = useState<CardContent | null>(null);
+    const [showGeneric, setShowGeneric] = useState(false);
+    // Comprehension quiz
+    type QuizQuestion = { question: string; options: string[]; correct: string; explanation: string };
+    const [comprehensionQuiz, setComprehensionQuiz] = useState<QuizQuestion[] | null>(null);
 
     // Determine which paper content and card data to display
     const paper = PAPER_CONTENT[fieldGroup as keyof typeof PAPER_CONTENT]
         ?? PAPER_CONTENT.default;
     const activeCardType = cardType;
     const baseCard = paper[activeCardType];
-    // Use Gemini-generated card when available
-    const card = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
+    // Use Gemini-generated card when available; swap to generic when toggled
+    const personalisedCard = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
+    const card = showGeneric && genericCard ? genericCard : personalisedCard;
 
     const generateCardContent = async () => {
         setIsLoading(true);
@@ -629,6 +636,8 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             setPaperDoi(data.doi ?? null);
             if (data.componentType) setComponentType(data.componentType);
             if (data.visualHints) setVisualHints(data.visualHints);
+            if (data.generic_card) setGenericCard(data.generic_card as CardContent);
+            if (data.comprehension_quiz) setComprehensionQuiz(data.comprehension_quiz as QuizQuestion[]);
             logEvent({
                 session_id: getSessionId(),
                 event_type: "card_generated",
@@ -699,6 +708,36 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                 </div>
             )}
 
+            {/* Generic/personalised toggle — only shown once a generic card is available */}
+            {!isLoading && genericCard && (
+                <div className="w-full max-w-[480px] flex items-center justify-end gap-2 mb-1.5">
+                    {showGeneric && (
+                        <span className="text-xs text-slate-400">Not personalised to your profile</span>
+                    )}
+                    <button
+                        onClick={() => {
+                            const next = !showGeneric;
+                            setShowGeneric(next);
+                            if (next) {
+                                logEvent({
+                                    session_id: getSessionId(),
+                                    event_type: "generic_toggle_used",
+                                    component_type: null,
+                                    card_variant: activeCardType,
+                                    paper_title: paperTitle ?? null,
+                                    paper_field: fieldGroup ?? null,
+                                    normalised_score: normalisedScore ?? null,
+                                    metadata: { card_level: activeCardType },
+                                });
+                            }
+                        }}
+                        className="text-xs text-slate-400 hover:text-slate-600 transition-colors underline-offset-2 hover:underline"
+                    >
+                        {showGeneric ? "See your version" : "See generic version"}
+                    </button>
+                </div>
+            )}
+
             {/* Feed card — collapsed view, tapping opens ExpandedView */}
             <FeedCard
                 paperTitle={paperTitle ?? ""}
@@ -730,6 +769,8 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             confusionResponse={confusionResponse ?? ""}
             trustAnchor={trustAnchor ?? ""}
             fieldGroup={fieldGroup ?? ""}
+            comprehensionQuiz={comprehensionQuiz}
+            isGenericCard={showGeneric}
             onFeedbackSubmit={(suitability, calibration, openFeedback) => {
                 onProceed(suitability, calibration, openFeedback, paperTitle ?? "");
             }}
