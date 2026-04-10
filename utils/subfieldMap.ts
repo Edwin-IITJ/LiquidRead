@@ -559,7 +559,7 @@ const allSubfields: SubfieldEntry[] = [
   },
   {
     "id": "2311",
-    "name": "Industrial and Manufacturing Engineering"
+    "name": "Waste Management and Disposal"
   },
   {
     "id": "1711",

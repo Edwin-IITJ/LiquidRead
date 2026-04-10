@@ -137,10 +137,10 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | 
             filterString = `${BASE_FILTERS},topics.subfield.id:${subfieldId}`;
         } else {
             filterString = `${BASE_FILTERS},topics.field.id:${fieldId}`;
-            // Apply Engineering exclusion if subfieldId isn't specifically used
-            if (fieldId === "22") {
-                filterString += ",topics.subfield.id:!2204";
-            }
+            // // Apply Engineering exclusion if subfieldId isn't specifically used
+            // if (fieldId === "22") {
+            //     filterString += ",topics.subfield.id:!2204";
+            // }
         }
         sortString = "&sort=cited_by_count:desc";
     } else {

@@ -24,7 +24,6 @@ const FIELD_OPTIONS = [
     "Humanities",
     "Medicine",
     "Business",
-    "Other",
 ];
 
 const EXPERIENCE_OPTIONS = [
@@ -91,8 +90,8 @@ export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }
                                     setError(false);
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${researchExperience === option
-                                        ? "bg-indigo-50 border-indigo-500 text-indigo-700"
-                                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                    ? "bg-indigo-50 border-indigo-500 text-indigo-700"
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                                     }`}
                             >
                                 {option}
@@ -115,8 +114,8 @@ export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }
                                     setError(false);
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${readingFrequency === option
-                                        ? "bg-indigo-50 border-indigo-500 text-indigo-700"
-                                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                    ? "bg-indigo-50 border-indigo-500 text-indigo-700"
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                                     }`}
                             >
                                 {option}
