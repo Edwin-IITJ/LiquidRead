@@ -1,5 +1,5 @@
 // GEMINI_API_KEY must be set in .env.local — never use NEXT_PUBLIC prefix
-// Uses gemini-2.5-flash-preview-04-17 with thinking enabled
+// Uses gemini-2.5-flash with thinking enabled
 
 import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
@@ -374,6 +374,25 @@ Abstract: ${body.paperAbstract}`;
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 
+async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<Response> {
+  let res: Response | null = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    res = await fetch(url, options);
+    if (res.ok) return res;
+
+    if (res.status === 503 || res.status === 429) {
+      if (attempt < 3) {
+        const waitMs = attempt === 1 ? 2000 : 4000;
+        console.log(`Gemini ${res.status} on attempt ${attempt} — retrying in ${waitMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+        continue;
+      }
+    }
+    return res;
+  }
+  return res!;
+}
+
 export async function POST(request: Request) {
   try {
     const body: ExpandedRequestBody = await request.json();
@@ -435,7 +454,7 @@ export async function POST(request: Request) {
     });
 
     // ── Gemini API call ────────────────────────────────────────────────────────
-    const geminiResponse = await fetch(
+    const geminiResponse = await fetchGeminiWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",

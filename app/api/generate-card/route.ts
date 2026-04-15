@@ -502,6 +502,25 @@ function validateCards(cards: unknown): boolean {
     return true;
 }
 
+async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<Response> {
+    let res: Response | null = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        res = await fetch(url, options);
+        if (res.ok) return res;
+        
+        if (res.status === 503 || res.status === 429) {
+            if (attempt < 3) {
+                const waitMs = attempt === 1 ? 2000 : 4000;
+                console.log(`Gemini ${res.status} on attempt ${attempt} — retrying in ${waitMs}ms...`);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
+                continue;
+            }
+        }
+        return res;
+    }
+    return res!;
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -556,7 +575,7 @@ export async function POST(request: Request) {
             abstract: paper.abstract?.slice(0, 100)
         });
 
-        const geminiResponse = await fetch(
+        const geminiResponse = await fetchGeminiWithRetry(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
             {
                 method: "POST",
@@ -606,6 +625,7 @@ export async function POST(request: Request) {
             const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
             cards = JSON.parse(jsonrepair(cleaned));
         } catch (e) {
+            console.log("RAW TEXT AROUND 1667:", rawText?.slice(1580, 1760));
             console.error("Failed to parse Gemini JSON response:", e, rawText);
             return NextResponse.json({ error: "generation_failed" }, { status: 500 });
         }
