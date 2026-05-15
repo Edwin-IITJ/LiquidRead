@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import ProgressBar from "./ProgressBar";
 
 export interface DemographicsAnswers {
     fieldGroup: string;
@@ -10,13 +10,17 @@ export interface DemographicsAnswers {
 }
 
 interface DemographicsScreenProps {
+    step: "field" | "comfort" | "frequency" | "priorName";
+    currentStep: number;
+    totalSteps: number;
     initialValues: DemographicsAnswers;
     onUpdate: (updates: Partial<DemographicsAnswers>) => void;
-    onSubmit: () => void;
+    onBack: () => void;
+    onContinue: () => void;
 }
 
+// ── Field options ──────────────────────────────────────────────────────────────
 const FIELD_OPTIONS = [
-    "",
     "Design",
     "Engineering",
     "Sciences",
@@ -26,136 +30,271 @@ const FIELD_OPTIONS = [
     "Business",
 ];
 
-const EXPERIENCE_OPTIONS = [
-    "I find it difficult and usually give up",
-    "I manage, but it takes effort",
-    "I'm fairly comfortable with most papers",
-    "I read research regularly without difficulty"
-];
+// ── Comfort options with stable local ids ──────────────────────────────────────
+const COMFORT_OPTIONS = [
+    { id: "A", label: "I find it difficult and usually give up" },
+    { id: "B", label: "I manage, but it takes effort" },
+    { id: "C", label: "I'm fairly comfortable with most papers" },
+    { id: "D", label: "I read research regularly without difficulty" },
+] as const;
 
-const FREQUENCY_OPTIONS = ["Daily", "A few times a week", "A few times a month", "Rarely"];
+const COMFORT_ARI: Record<string, string> = {
+    A: "That helps. I'll avoid dropping you into the deep end.",
+    B: "Good to know. Enough depth to be useful, not enough to be punishing.",
+    C: "Nice. I can assume some fluency without overexplaining everything.",
+    D: "Got it. I won't dilute the interesting parts.",
+};
 
-export default function DemographicsScreen({ initialValues, onUpdate, onSubmit }: DemographicsScreenProps) {
-    const { fieldGroup, researchExperience, readingFrequency, priorInterviewName } = initialValues;
-    const [error, setError] = useState(false);
+// ── Frequency options with stable local ids ────────────────────────────────────
+const FREQUENCY_OPTIONS = [
+    { id: "A", label: "Daily" },
+    { id: "B", label: "A few times a week" },
+    { id: "C", label: "A few times a month" },
+    { id: "D", label: "Rarely" },
+] as const;
 
-    function handleSubmit() {
-        if (!fieldGroup || !researchExperience || !readingFrequency) {
-            setError(true);
-            return;
-        }
-        onSubmit();
-    }
+const FREQUENCY_ARI: Record<string, string> = {
+    A: "Research is already part of your rhythm.",
+    B: "Frequent enough to build momentum, not so frequent it becomes wallpaper.",
+    C: "That's a good cadence for staying sharp without drowning in papers.",
+    D: "Good to know. The first read should earn your attention quickly.",
+};
 
+// ── Shared layout atoms ────────────────────────────────────────────────────────
+
+function ScreenShell({
+    currentStep,
+    totalSteps,
+    stepLabel,
+    question,
+    helperLine,
+    canContinue,
+    ariResponse,
+    onBack,
+    onContinue,
+    children,
+}: {
+    currentStep: number;
+    totalSteps: number;
+    stepLabel: string;
+    question: string;
+    helperLine: string;
+    canContinue: boolean;
+    ariResponse: string | null;
+    onBack: () => void;
+    onContinue: () => void;
+    children: React.ReactNode;
+}) {
     return (
-        <div className="fade-in">
-            <p className="text-xs uppercase tracking-widest text-slate-400 mb-6">
-                A bit about you
-            </p>
-
-            <div className="space-y-8">
-                {/* Q-D1 */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                        What is your primary field of study or work?
-                    </label>
-                    <select
-                        value={fieldGroup}
-                        onChange={(e) => {
-                            onUpdate({ fieldGroup: e.target.value });
-                            setError(false);
-                        }}
-                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 bg-white focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm appearance-none"
-                    >
-                        <option value="" disabled>Select a field...</option>
-                        {FIELD_OPTIONS.filter((o) => o).map((option) => (
-                            <option key={option} value={option}>
-                                {option}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Q-D2 */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-3">
-                        How comfortable are you reading academic research?
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                        {EXPERIENCE_OPTIONS.map((option) => (
-                            <button
-                                key={option}
-                                onClick={() => {
-                                    onUpdate({ researchExperience: option });
-                                    setError(false);
-                                }}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${researchExperience === option
-                                    ? "bg-indigo-50 border-indigo-500 text-indigo-700"
-                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                                    }`}
-                            >
-                                {option}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Q-D3 */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-3">
-                        How often do you typically read research papers?
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                        {FREQUENCY_OPTIONS.map((option) => (
-                            <button
-                                key={option}
-                                onClick={() => {
-                                    onUpdate({ readingFrequency: option });
-                                    setError(false);
-                                }}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${readingFrequency === option
-                                    ? "bg-indigo-50 border-indigo-500 text-indigo-700"
-                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-                                    }`}
-                            >
-                                {option}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Q-D4 Optional Interview Name */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Have you been interviewed as part of this research before? If yes, enter the name you used.
-                    </label>
-                    <p className="text-xs text-slate-400 mb-3">
-                        Optional - only if applicable.
-                    </p>
-                    <input
-                        type="text"
-                        value={priorInterviewName}
-                        onChange={(e) => onUpdate({ priorInterviewName: e.target.value })}
-                        placeholder="Your name"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
-                    />
-                </div>
+        <div className="flex flex-col gap-0 fade-in">
+            {/* Back + Progress */}
+            <div className="mb-6">
+                <button
+                    onClick={onBack}
+                    className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1 mb-4"
+                >
+                    ← Back
+                </button>
+                <ProgressBar current={currentStep} total={totalSteps} />
             </div>
 
-            {error && (
-                <p className="mt-6 text-sm text-red-500 font-medium fade-in">
-                    Please answer all questions before proceeding.
-                </p>
-            )}
+            {/* Step label */}
+            <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">
+                {stepLabel}
+            </p>
 
-            <div className="mt-8 flex md:justify-end border-t border-slate-100 pt-6">
+            {/* Question */}
+            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-2">
+                {question}
+            </h2>
+
+            {/* Helper line */}
+            <p className="text-sm text-slate-400 mb-7">{helperLine}</p>
+
+            {/* Options slot */}
+            {children}
+
+            {/* Ari response line */}
+            <div className="min-h-[28px] mt-5">
+                {ariResponse && (
+                    <div className="flex items-start gap-2 fade-in">
+                        <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <span className="text-indigo-600 text-[9px] font-bold leading-none">A</span>
+                        </span>
+                        <p className="text-sm text-slate-500 italic">{ariResponse}</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Continue button — always visible, disabled until valid */}
+            <div className="mt-6 flex justify-end border-t border-slate-100 pt-6">
                 <button
-                    onClick={handleSubmit}
-                    className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-8 py-3 text-sm font-medium transition-colors"
+                    onClick={onContinue}
+                    disabled={!canContinue}
+                    className={`w-full sm:w-auto rounded-xl px-8 py-3 text-sm font-medium transition-colors
+                        ${canContinue
+                            ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white cursor-pointer"
+                            : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        }`}
                 >
-                    Continue &rarr;
+                    Continue
                 </button>
             </div>
         </div>
+    );
+}
+
+function OptionPill({
+    label,
+    selected,
+    onSelect,
+}: {
+    label: string;
+    selected: boolean;
+    onSelect: () => void;
+}) {
+    return (
+        <button
+            onClick={onSelect}
+            className={`w-full text-left rounded-xl border px-5 py-4 text-sm font-medium transition-all duration-150
+                ${selected
+                    ? "border-indigo-500 bg-indigo-50 text-indigo-900"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+        >
+            {label}
+        </button>
+    );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+export default function DemographicsScreen({
+    step,
+    currentStep,
+    totalSteps,
+    initialValues,
+    onUpdate,
+    onBack,
+    onContinue,
+}: DemographicsScreenProps) {
+    const { fieldGroup, researchExperience, readingFrequency, priorInterviewName } = initialValues;
+
+    // ── Field ──────────────────────────────────────────────────────────────────
+    if (step === "field") {
+        return (
+            <ScreenShell
+                currentStep={currentStep}
+                totalSteps={totalSteps}
+                stepLabel="About you"
+                question="What field do you work or study in most?"
+                helperLine="This helps me start in the right neighborhood."
+                canContinue={fieldGroup !== ""}
+                ariResponse={null}
+                onBack={onBack}
+                onContinue={onContinue}
+            >
+                <div className="flex flex-col gap-2">
+                    {FIELD_OPTIONS.map((opt) => (
+                        <OptionPill
+                            key={opt}
+                            label={opt}
+                            selected={fieldGroup === opt}
+                            onSelect={() => onUpdate({ fieldGroup: opt })}
+                        />
+                    ))}
+                    {!fieldGroup && (
+                        <p className="text-xs text-slate-400 mt-1">Pick one to continue.</p>
+                    )}
+                </div>
+            </ScreenShell>
+        );
+    }
+
+    // ── Research comfort ───────────────────────────────────────────────────────
+    if (step === "comfort") {
+        const selected = COMFORT_OPTIONS.find((o) => o.label === researchExperience);
+        return (
+            <ScreenShell
+                currentStep={currentStep}
+                totalSteps={totalSteps}
+                stepLabel="About you"
+                question="How comfortable are you with academic papers right now?"
+                helperLine="No right answer here. This just helps me choose the right depth."
+                canContinue={researchExperience !== ""}
+                ariResponse={selected ? COMFORT_ARI[selected.id] : null}
+                onBack={onBack}
+                onContinue={onContinue}
+            >
+                <div className="flex flex-col gap-2">
+                    {COMFORT_OPTIONS.map((opt) => (
+                        <OptionPill
+                            key={opt.id}
+                            label={opt.label}
+                            selected={researchExperience === opt.label}
+                            onSelect={() => onUpdate({ researchExperience: opt.label })}
+                        />
+                    ))}
+                    {!researchExperience && (
+                        <p className="text-xs text-slate-400 mt-1">Pick one to continue.</p>
+                    )}
+                </div>
+            </ScreenShell>
+        );
+    }
+
+    // ── Reading frequency ──────────────────────────────────────────────────────
+    if (step === "frequency") {
+        const selected = FREQUENCY_OPTIONS.find((o) => o.label === readingFrequency);
+        return (
+            <ScreenShell
+                currentStep={currentStep}
+                totalSteps={totalSteps}
+                stepLabel="About you"
+                question="How often do you usually read research?"
+                helperLine="This helps me gauge how familiar this world already feels."
+                canContinue={readingFrequency !== ""}
+                ariResponse={selected ? FREQUENCY_ARI[selected.id] : null}
+                onBack={onBack}
+                onContinue={onContinue}
+            >
+                <div className="flex flex-col gap-2">
+                    {FREQUENCY_OPTIONS.map((opt) => (
+                        <OptionPill
+                            key={opt.id}
+                            label={opt.label}
+                            selected={readingFrequency === opt.label}
+                            onSelect={() => onUpdate({ readingFrequency: opt.label })}
+                        />
+                    ))}
+                    {!readingFrequency && (
+                        <p className="text-xs text-slate-400 mt-1">Pick one to continue.</p>
+                    )}
+                </div>
+            </ScreenShell>
+        );
+    }
+
+    // ── Prior interview name (optional) ────────────────────────────────────────
+    return (
+        <ScreenShell
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            stepLabel="About you"
+            question="Have you tested LiquidRead before?"
+            helperLine="Optional. If yes, enter the same name you used earlier."
+            canContinue={true}
+            ariResponse={null}
+            onBack={onBack}
+            onContinue={onContinue}
+        >
+            <input
+                type="text"
+                value={priorInterviewName}
+                onChange={(e) => onUpdate({ priorInterviewName: e.target.value })}
+                placeholder="Type your name"
+                className="w-full rounded-xl border border-slate-200 px-5 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
+            />
+        </ScreenShell>
     );
 }

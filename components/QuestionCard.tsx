@@ -9,6 +9,10 @@ interface QuestionCardProps {
     question: Question;
     selectedOptionId: string | null;
     fieldValue: string;
+    stepLabel: string;
+    displayText: string;      // overrides question.text for display
+    helperLine: string;
+    ariResponse: string | null; // shown beneath options after selection
     onOptionSelect: (optionId: string, label: string, points: number) => void;
     onTextChange: (value: string) => void;
 }
@@ -17,6 +21,10 @@ export default function QuestionCard({
     question,
     selectedOptionId,
     fieldValue,
+    stepLabel,
+    displayText,
+    helperLine,
+    ariResponse,
     onOptionSelect,
     onTextChange,
 }: QuestionCardProps) {
@@ -24,15 +32,25 @@ export default function QuestionCard({
 
     return (
         <div>
-            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-6">
-                {question.text}
+            {/* Step label */}
+            <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">
+                {stepLabel}
+            </p>
+
+            {/* Question text */}
+            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-2">
+                {displayText}
             </h2>
 
+            {/* Helper line */}
+            <p className="text-sm text-slate-400 mb-7">{helperLine}</p>
+
+            {/* Options or text input */}
             {question.type === "text" ? (
                 <TextInput
                     value={fieldValue}
                     onChange={onTextChange}
-                    placeholder="e.g. machine learning, urban planning..."
+                    placeholder="Type a topic or field"
                 />
             ) : (
                 <div
@@ -48,7 +66,9 @@ export default function QuestionCard({
                                 <SleepChartOption
                                     key={option.id}
                                     selected={selectedOptionId === option.id}
-                                    onSelect={() => onOptionSelect(option.id, option.label, option.points)}
+                                    onSelect={() =>
+                                        onOptionSelect(option.id, option.label, option.points)
+                                    }
                                 />
                             );
                         }
@@ -57,13 +77,27 @@ export default function QuestionCard({
                                 key={option.id}
                                 option={option}
                                 selected={selectedOptionId === option.id}
-                                onSelect={() => onOptionSelect(option.id, option.label, option.points)}
+                                onSelect={() =>
+                                    onOptionSelect(option.id, option.label, option.points)
+                                }
                                 compact={isVisualCards}
                             />
                         );
                     })}
                 </div>
             )}
+
+            {/* Ari response line — appears after selection, no layout shift */}
+            <div className="min-h-[28px] mt-5">
+                {ariResponse && (
+                    <div className="flex items-start gap-2 fade-in">
+                        <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <span className="text-indigo-600 text-[9px] font-bold leading-none">A</span>
+                        </span>
+                        <p className="text-sm text-slate-500 italic">{ariResponse}</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

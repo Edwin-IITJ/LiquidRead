@@ -1,4 +1,6 @@
-export type AppState = 'intro' | 'demographics' | 'questions' | 'scoring' | 'card' | 'reflection' | 'feedback' | 'thankyou';
+// 'intro' | 'demographics' | 'questions' are kept for type safety but are dead routes in the app.
+// All onboarding now flows through 'onboarding'.
+export type AppState = 'intro' | 'demographics' | 'questions' | 'onboarding' | 'scoring' | 'card' | 'reflection' | 'feedback' | 'thankyou';
 
 export type CardType = 'A' | 'B' | 'C';
 
@@ -28,7 +30,8 @@ export interface Answer {
 
 export interface QuizState {
   appState: AppState;
-  progressIndex: number; // 0-based, 0–7
+  onboardingStep: number; // 0 = welcome, 1–15 = counted steps, 16 = final transition
+  progressIndex: number;  // kept for downstream compat, not used for routing
   answers: Record<string, Answer>; // questionId → { optionId, points }
   field: string; // Q8 free text
   fieldGroup: string;

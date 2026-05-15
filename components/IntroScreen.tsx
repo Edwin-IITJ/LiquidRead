@@ -1,39 +1,46 @@
 export default function IntroScreen({ onStart }: { onStart: () => void }) {
     return (
-        <div className="flex flex-col items-center justify-center fade-in">
-            <div className="max-w-[560px] w-full">
-                <div className="text-xs uppercase tracking-widest text-slate-400">
-                    Master's Thesis Research &middot; School Of Design, IIT Jodhpur
-                </div>
-                <h1 className="text-2xl font-semibold text-slate-900 mt-4">
-                    How should research papers be presented to you?
+        <div className="flex flex-col fade-in">
+            <div className="max-w-[520px] w-full">
+                {/* Eyebrow */}
+                <p className="text-xs font-medium uppercase tracking-widest text-indigo-500 mb-5">
+                    Meet LiquidRead
+                </p>
+
+                {/* Headline */}
+                <h1 className="text-3xl font-semibold text-slate-900 leading-tight mb-4">
+                    Research, shaped to how&nbsp;you&nbsp;read.
                 </h1>
-                <p className="text-base text-slate-600 mt-4 leading-relaxed max-w-prose">
-                    Research is hard to access, not because the science is difficult, but because it's rarely written for the person reading it. This experiment explores whether that can change.
+
+                {/* Subheadline */}
+                <p className="text-base text-slate-500 leading-relaxed mb-8">
+                    Answer a few quick questions and I'll tune the first paper to your pace,
+                    priorities, and curiosity.
                 </p>
-                <hr className="border-t border-slate-100 mt-6 mb-6" />
-                <div className="inline-flex gap-3 flex-wrap">
-                    <span className="text-xs bg-slate-50 border border-slate-200 rounded-full px-3 py-1 text-slate-500">
-                        ⏱ 5-6 minutes
+
+                {/* Ari line */}
+                <div className="flex items-start gap-2.5 mb-10">
+                    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-indigo-600 text-[10px] font-bold leading-none">A</span>
                     </span>
-                    <span className="text-xs bg-slate-50 border border-slate-200 rounded-full px-3 py-1 text-slate-500">
-                        ~16 questions
-                    </span>
-                    <span className="text-xs bg-slate-50 border border-slate-200 rounded-full px-3 py-1 text-slate-500">
-                        Anonymous
-                    </span>
+                    <p className="text-sm text-slate-500 italic">
+                        Hi, I'm Ari. I'll help set things up.
+                    </p>
                 </div>
-                <p className="text-xs text-slate-400 mt-3">
-                    Your responses are anonymous and used only for academic research. No sign-in required.
+
+                {/* CTA */}
+                <button
+                    id="onboarding-start-btn"
+                    onClick={onStart}
+                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl px-8 py-3.5 text-sm font-medium transition-colors"
+                >
+                    Start onboarding
+                </button>
+
+                {/* Helper */}
+                <p className="text-xs text-slate-400 mt-4">
+                    Takes about 3 minutes. You can change answers anytime.
                 </p>
-                <div className="mt-8 flex md:justify-end">
-                    <button
-                        onClick={onStart}
-                        className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors"
-                    >
-                        See how your version looks &rarr;
-                    </button>
-                </div>
             </div>
         </div>
     );
