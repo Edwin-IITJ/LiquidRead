@@ -155,8 +155,8 @@ const DEMO_STEPS: Record<number, "field" | "comfort" | "frequency" | "priorName"
 // ── Helper wrapper ─────────────────────────────────────────────────────────────
 function QuizWrapper({ children }: { children: React.ReactNode }) {
     return (
-        <main className="min-h-screen flex items-start justify-center px-4 py-8 bg-[#F8F7F4]">
-            <div className="w-full max-w-2xl bg-white border border-[#E8E4DD] rounded-2xl p-6 sm:p-10 shadow-none">
+        <main className="min-h-screen flex items-start justify-center px-4 py-8 bg-[#F2EDE4]">
+            <div className="w-full max-w-2xl bg-[#FDFAF5] border border-[#DDD5C8] rounded-2xl p-6 sm:p-10 shadow-none">
                 {children}
             </div>
         </main>
@@ -307,14 +307,14 @@ export default function QuizApp() {
 
     if (state.appState === "card") {
         return (
-            <div className="flex flex-col h-screen overflow-hidden bg-[#F8F7F4] text-slate-900 font-sans">
+                <div className="flex flex-col h-screen overflow-hidden bg-[#F2EDE4] text-[#2C2218] font-sans">
                 {/* ── TOP BAR ── */}
-                <header className="h-[56px] px-6 flex items-center justify-between border-b border-slate-200 bg-white shrink-0">
+                <header className="h-[56px] px-6 flex items-center justify-between border-b border-[#DDD5C8] bg-[#FDFAF5] shrink-0">
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center">
+                        <div className="w-6 h-6 bg-[#7C5C3E] rounded-md flex items-center justify-center">
                             <span className="text-white text-xs font-bold leading-none">Lr</span>
                         </div>
-                        <span className="font-semibold text-lg tracking-tight">LiquidRead</span>
+                        <span className="font-semibold text-lg tracking-tight text-[#2C2218]">LiquidRead</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <button className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Settings">
@@ -336,7 +336,7 @@ export default function QuizApp() {
                         confusionResponse={state.answers.q1?.label}
                         normalisedScore={state.normalisedScore}
                     />
-                    <main className="flex-1 min-w-0 overflow-y-auto bg-[#F8F7F4] flex flex-col">
+            <main className="flex-1 min-w-0 overflow-y-auto bg-[#F2EDE4] flex flex-col">
                         <CardDisplay
                             cardType={state.cardShown}
                             fieldGroup={state.fieldGroup || "default"}
@@ -447,7 +447,7 @@ export default function QuizApp() {
                     <div className="mb-6">
                         <button
                             onClick={retreat}
-                            className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1 mb-4"
+                            className="text-[#9C8B78] text-sm hover:text-[#6B5C4A] transition-colors flex items-center gap-1 mb-4"
                         >
                             ← Back
                         </button>
@@ -468,14 +468,14 @@ export default function QuizApp() {
                     />
 
                     {/* Continue — always visible, disabled until valid */}
-                    <div className="mt-6 flex justify-end border-t border-slate-100 pt-6">
+                    <div className="border-t border-[#E8E0D5] pt-6">
                         <button
                             onClick={advance}
                             disabled={!canContinue}
                             className={`w-full sm:w-auto rounded-xl px-8 py-3 text-sm font-medium transition-colors
                                 ${canContinue
-                                    ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white cursor-pointer"
-                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                    ? "bg-[#7C5C3E] hover:bg-[#6A4E34] active:bg-[#5A4028] text-white cursor-pointer"
+                                    : "bg-[#EDE5D8] text-[#9C8B78] cursor-not-allowed"
                                 }`}
                         >
                             {isTextQ && !canContinue ? "Add a topic to continue." : "Continue"}
@@ -517,20 +517,20 @@ export default function QuizApp() {
                     </button>
 
                     <div className="py-4">
-                        <h2 className="text-2xl font-semibold text-slate-900 leading-snug mb-4">
+                        <h2 className="text-2xl font-semibold text-[#2C2218] leading-snug mb-4">
                             Got it. I'm shaping your first read.
                         </h2>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-8">
+                        <p className="text-sm text-[#6B5C4A] leading-relaxed mb-8">
                             I'm using your answers to tune what shows up first, what gets explained,
                             and how much depth feels useful.
                         </p>
 
                         {/* Ari line */}
                         <div className="flex items-start gap-2.5">
-                            <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center">
-                                <span className="text-indigo-600 text-[9px] font-bold leading-none">A</span>
+                            <span className="flex-shrink-0 w-4 h-4 rounded-full bg-[#EDE5D8] flex items-center justify-center">
+                                <span className="text-[#7C5C3E] text-[9px] font-bold leading-none">A</span>
                             </span>
-                            <p className="text-sm text-slate-500 italic">
+                            <p className="text-[#6B5C4A] text-sm italic">
                                 This should only take a moment.
                             </p>
                         </div>
@@ -541,7 +541,7 @@ export default function QuizApp() {
                         <button
                             id="prepare-first-read-btn"
                             onClick={goToScoring}
-                            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl px-8 py-3.5 text-sm font-medium transition-colors"
+                            className="bg-[#7C5C3E] hover:bg-[#6A4E34] active:bg-[#5A4028] text-white rounded-xl px-8 py-3.5 text-sm font-medium transition-colors"
                         >
                             Prepare my first read
                         </button>

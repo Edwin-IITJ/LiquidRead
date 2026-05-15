@@ -21,8 +21,8 @@ export default function OptionButton({
             className={`w-full text-left rounded-xl border px-5 transition-all duration-150 
         ${compact ? "py-4 text-sm" : "py-4"}
         ${selected
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-900"
-                    : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-[#7C5C3E] bg-[#F5EEE4] text-[#2C2218]"
+                    : "border-[#DDD5C8] bg-[#FDFAF5] text-[#6B5C4A] hover:border-[#C4B8A8] hover:bg-[#F5EEE4]"
                 }`}
         >
             <span className="font-medium">{option.label}</span>

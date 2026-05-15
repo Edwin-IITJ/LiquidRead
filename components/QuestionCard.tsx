@@ -33,17 +33,17 @@ export default function QuestionCard({
     return (
         <div>
             {/* Step label */}
-            <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">
+            <p className="text-xs font-medium uppercase tracking-widest text-[#9C8B78] mb-3">
                 {stepLabel}
             </p>
 
             {/* Question text */}
-            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-2">
+            <h2 className="text-xl font-semibold text-[#2C2218] leading-snug mb-2">
                 {displayText}
             </h2>
 
             {/* Helper line */}
-            <p className="text-sm text-slate-400 mb-7">{helperLine}</p>
+            <p className="text-sm text-[#9C8B78] mb-7">{helperLine}</p>
 
             {/* Options or text input */}
             {question.type === "text" ? (
@@ -91,10 +91,10 @@ export default function QuestionCard({
             <div className="min-h-[28px] mt-5">
                 {ariResponse && (
                     <div className="flex items-start gap-2 fade-in">
-                        <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <span className="text-indigo-600 text-[9px] font-bold leading-none">A</span>
+                        <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[#EDE5D8] flex items-center justify-center">
+                            <span className="text-[#7C5C3E] text-[9px] font-bold leading-none">A</span>
                         </span>
-                        <p className="text-sm text-slate-500 italic">{ariResponse}</p>
+                        <p className="text-sm text-[#6B5C4A] italic">{ariResponse}</p>
                     </div>
                 )}
             </div>

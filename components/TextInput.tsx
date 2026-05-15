@@ -13,7 +13,7 @@ export default function TextInput({ value, onChange, placeholder }: TextInputPro
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full rounded-xl border border-slate-200 px-5 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+            className="w-full rounded-xl border border-[#DDD5C8] bg-[#FDFAF5] px-5 py-4 text-[#2C2218] placeholder-[#9C8B78] focus:outline-none focus:border-[#7C5C3E] focus:ring-2 focus:ring-[#EDE5D8] transition-all"
         />
     );
 }

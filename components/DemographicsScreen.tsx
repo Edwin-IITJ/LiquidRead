@@ -91,7 +91,7 @@ function ScreenShell({
             <div className="mb-6">
                 <button
                     onClick={onBack}
-                    className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1 mb-4"
+                    className="text-[#9C8B78] text-sm hover:text-[#6B5C4A] transition-colors flex items-center gap-1 mb-4"
                 >
                     ← Back
                 </button>
@@ -99,17 +99,17 @@ function ScreenShell({
             </div>
 
             {/* Step label */}
-            <p className="text-xs font-medium uppercase tracking-widest text-slate-400 mb-3">
+            <p className="text-xs font-medium uppercase tracking-widest text-[#9C8B78] mb-3">
                 {stepLabel}
             </p>
 
             {/* Question */}
-            <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-2">
+            <h2 className="text-xl font-semibold text-[#2C2218] leading-snug mb-2">
                 {question}
             </h2>
 
             {/* Helper line */}
-            <p className="text-sm text-slate-400 mb-7">{helperLine}</p>
+            <p className="text-sm text-[#9C8B78] mb-7">{helperLine}</p>
 
             {/* Options slot */}
             {children}
@@ -118,23 +118,23 @@ function ScreenShell({
             <div className="min-h-[28px] mt-5">
                 {ariResponse && (
                     <div className="flex items-start gap-2 fade-in">
-                        <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <span className="text-indigo-600 text-[9px] font-bold leading-none">A</span>
+                        <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[#EDE5D8] flex items-center justify-center">
+                            <span className="text-[#7C5C3E] text-[9px] font-bold leading-none">A</span>
                         </span>
-                        <p className="text-sm text-slate-500 italic">{ariResponse}</p>
+                        <p className="text-sm text-[#6B5C4A] italic">{ariResponse}</p>
                     </div>
                 )}
             </div>
 
             {/* Continue button — always visible, disabled until valid */}
-            <div className="mt-6 flex justify-end border-t border-slate-100 pt-6">
+            <div className="mt-6 flex justify-end border-t border-[#E8E0D5] pt-6">
                 <button
                     onClick={onContinue}
                     disabled={!canContinue}
                     className={`w-full sm:w-auto rounded-xl px-8 py-3 text-sm font-medium transition-colors
                         ${canContinue
-                            ? "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white cursor-pointer"
-                            : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            ? "bg-[#7C5C3E] hover:bg-[#6A4E34] active:bg-[#5A4028] text-white cursor-pointer"
+                            : "bg-[#EDE5D8] text-[#9C8B78] cursor-not-allowed"
                         }`}
                 >
                     Continue
@@ -158,8 +158,8 @@ function OptionPill({
             onClick={onSelect}
             className={`w-full text-left rounded-xl border px-5 py-4 text-sm font-medium transition-all duration-150
                 ${selected
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-900"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    ? "border-[#7C5C3E] bg-[#F5EEE4] text-[#2C2218]"
+                    : "border-[#DDD5C8] bg-[#FDFAF5] text-[#6B5C4A] hover:border-[#C4B8A8] hover:bg-[#F5EEE4]"
                 }`}
         >
             {label}
@@ -293,7 +293,7 @@ export default function DemographicsScreen({
                 value={priorInterviewName}
                 onChange={(e) => onUpdate({ priorInterviewName: e.target.value })}
                 placeholder="Type your name"
-                className="w-full rounded-xl border border-slate-200 px-5 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm"
+                className="w-full rounded-xl border border-[#DDD5C8] bg-[#FDFAF5] px-5 py-4 text-[#2C2218] placeholder-[#9C8B78] focus:outline-none focus:border-[#7C5C3E] focus:ring-2 focus:ring-[#EDE5D8] transition-all text-sm"
             />
         </ScreenShell>
     );

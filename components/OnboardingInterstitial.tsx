@@ -27,7 +27,7 @@ export default function OnboardingInterstitial({
             <div className="mb-8">
                 <button
                     onClick={onBack}
-                    className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1 mb-4"
+                    className="text-[#9C8B78] text-sm hover:text-[#6B5C4A] transition-colors flex items-center gap-1 mb-4"
                 >
                     ← Back
                 </button>
@@ -36,27 +36,27 @@ export default function OnboardingInterstitial({
 
             {/* Content */}
             <div className="py-4">
-                <h2 className="text-xl font-semibold text-slate-900 leading-snug mb-4">
+                <h2 className="text-xl font-semibold text-[#2C2218] leading-snug mb-4">
                     {headline}
                 </h2>
-                <p className="text-sm text-slate-500 leading-relaxed mb-8">
+                <p className="text-sm text-[#6B5C4A] leading-relaxed mb-8">
                     {body}
                 </p>
 
                 {/* Ari line */}
                 <div className="flex items-start gap-2.5">
-                    <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <span className="text-indigo-600 text-[9px] font-bold leading-none">A</span>
+                    <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full bg-[#EDE5D8] flex items-center justify-center">
+                        <span className="text-[#7C5C3E] text-[9px] font-bold leading-none">A</span>
                     </span>
-                    <p className="text-sm text-slate-500 italic">{ariLine}</p>
+                    <p className="text-sm text-[#6B5C4A] italic">{ariLine}</p>
                 </div>
             </div>
 
             {/* Continue — always enabled */}
-            <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
+            <div className="mt-8 flex justify-end border-t border-[#E8E0D5] pt-6">
                 <button
                     onClick={onContinue}
-                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl px-8 py-3 text-sm font-medium transition-colors"
+                    className="w-full sm:w-auto bg-[#7C5C3E] hover:bg-[#6A4E34] active:bg-[#5A4028] text-white rounded-xl px-8 py-3 text-sm font-medium transition-colors"
                 >
                     Continue
                 </button>
