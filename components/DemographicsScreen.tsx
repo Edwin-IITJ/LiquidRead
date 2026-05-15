@@ -204,7 +204,7 @@ export default function DemographicsScreen({
                         />
                     ))}
                     {!fieldGroup && (
-                        <p className="text-xs text-slate-400 mt-1">Pick one to continue.</p>
+                        <p className="text-xs text-[#9C8B78] mt-1">Pick one to continue.</p>
                     )}
                 </div>
             </ScreenShell>
@@ -236,7 +236,7 @@ export default function DemographicsScreen({
                         />
                     ))}
                     {!researchExperience && (
-                        <p className="text-xs text-slate-400 mt-1">Pick one to continue.</p>
+                        <p className="text-xs text-[#9C8B78] mt-1">Pick one to continue.</p>
                     )}
                 </div>
             </ScreenShell>
@@ -268,7 +268,7 @@ export default function DemographicsScreen({
                         />
                     ))}
                     {!readingFrequency && (
-                        <p className="text-xs text-slate-400 mt-1">Pick one to continue.</p>
+                        <p className="text-xs text-[#9C8B78] mt-1">Pick one to continue.</p>
                     )}
                 </div>
             </ScreenShell>

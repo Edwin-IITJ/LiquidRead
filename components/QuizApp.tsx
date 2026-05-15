@@ -317,11 +317,11 @@ export default function QuizApp() {
                         <span className="font-semibold text-lg tracking-tight text-[#2C2218]">LiquidRead</span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button className="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Settings">
+                        <button className="text-[#9C8B78] hover:text-[#6B5C4A] transition-colors" aria-label="Settings">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         </button>
-                        <div className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 overflow-hidden flex items-end justify-center">
-                            <svg className="w-6 h-6 text-slate-400 mb-[-2px]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <div className="w-8 h-8 rounded-full bg-[#E8E0D5] border border-[#DDD5C8] overflow-hidden flex items-end justify-center">
+                            <svg className="w-6 h-6 text-[#9C8B78] mb-[-2px]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </div>
                     </div>
                 </header>
@@ -511,7 +511,7 @@ export default function QuizApp() {
                     {/* Back button — no progress bar */}
                     <button
                         onClick={retreat}
-                        className="text-slate-400 text-sm hover:text-slate-600 transition-colors flex items-center gap-1 mb-10"
+                        className="text-[#9C8B78] text-sm hover:text-[#6B5C4A] transition-colors flex items-center gap-1 mb-10"
                     >
                         ← Back
                     </button>
@@ -537,7 +537,7 @@ export default function QuizApp() {
                     </div>
 
                     {/* CTA — triggers scoring */}
-                    <div className="mt-10 flex justify-end border-t border-slate-100 pt-6">
+                    <div className="mt-10 flex justify-end border-t border-[#E8E0D5] pt-6">
                         <button
                             id="prepare-first-read-btn"
                             onClick={goToScoring}
