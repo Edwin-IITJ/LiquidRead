@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Lora } from "next/font/google";
+import { DM_Sans, Lora } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${lora.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${lora.variable}`}>
       <body className="bg-[#F2EDE4] text-[#2C2218] font-sans antialiased">{children}</body>
     </html>
   );
