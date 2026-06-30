@@ -5,7 +5,8 @@ import { CardType } from "@/types/quiz";
 import { logEvent } from "@/utils/logEvent";
 import { getSessionId } from "@/utils/sessionId";
 import ExpandedView from "@/components/ExpandedView";
-import FeedCard from "@/components/FeedCard";
+import FeedPaperCard from "@/components/FeedPaperCard";
+import placeholderCards from "@/data/placeholderCards";
 
 interface CardDisplayProps {
     cardType: CardType;
@@ -699,74 +700,65 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
     void setError;
     void hasError;
 
-    // Show spinner while Gemini is generating
-    if (isLoading && !allGeneratedCards && !error) {
-        return (
-            <div className="max-w-2xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[50vh]">
-                <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-indigo-500 animate-spin" />
-                <p className="text-sm text-slate-400 mt-4">Preparing your version...</p>
-            </div>
-        );
-    }
+    // Derive source label from fieldGroup
+    const sourceLabel = (fieldGroup ?? "RESEARCH").toUpperCase();
+    const sourceColors: Record<string, string> = {
+        MEDICINE: "#c41c1c",
+        ENGINEERING: "#1565c0",
+        DESIGN: "#7b1fa2",
+        BUSINESS: "#00695c",
+        SCIENCES: "#e65100",
+        "SOCIAL SCIENCES": "#4527a0",
+    };
+    const sourceColor = sourceColors[sourceLabel] ?? "#37474f";
 
     return (
         <>
-        <div className="flex-1 w-full h-full px-4 py-6 md:p-8 flex flex-col items-center overflow-y-auto">
+        <div className="feed-cards-container">
 
             {isFallback && (
-                <div className="bg-amber-50 text-amber-800 text-sm font-medium px-4 py-3 rounded-lg text-center mb-6 border border-amber-200 fade-in max-w-[480px] w-full">
+                <div className="bg-amber-50 text-amber-800 text-sm font-medium px-4 py-3 rounded-lg text-center mb-4 border border-amber-200 fade-in">
                     Showing a sample card — personalised version unavailable right now.
                 </div>
             )}
 
-            {/* Generic/personalised toggle — only shown once a generic card is available */}
-            {!isLoading && genericCard && (
-                <div className="w-full max-w-[480px] flex items-center justify-end gap-2 mb-1.5">
-                    {showGeneric && (
-                        <span className="text-xs text-slate-400">Raw abstract — not personalised</span>
-                    )}
-                    <button
-                        onClick={() => {
-                            const next = !showGeneric;
-                            setShowGeneric(next);
-                            if (next) {
-                                logEvent({
-                                    session_id: getSessionId(),
-                                    event_type: "generic_toggle_used",
-                                    component_type: null,
-                                    card_variant: activeCardType,
-                                    paper_title: paperTitle ?? null,
-                                    paper_field: fieldGroup ?? null,
-                                    normalised_score: normalisedScore ?? null,
-                                    metadata: { card_level: activeCardType },
-                                });
-                            }
-                        }}
-                        className="text-xs text-slate-400 hover:text-slate-600 transition-colors underline-offset-2 hover:underline"
-                    >
-                        {showGeneric ? "See your version" : "See generic version"}
-                    </button>
-                </div>
-            )}
-
-            {/* Feed card — collapsed view, tapping opens ExpandedView */}
-            <FeedCard
-                paperTitle={paperTitle ?? ""}
-                hook={card.layers[0]?.headline ?? null}
-                previewText={card.layers[0]?.body ?? null}
-                componentType={componentType}
-                cardVariant={activeCardType}
-                fieldGroup={fieldGroup ?? ""}
-                isLoading={isLoading}
-                onExpand={() => setIsExpanded(true)}
-                visualHints={{
-                    keyStat: visualHints.keyStat,
-                    keyStatLabel: visualHints.keyStatLabel,
-                }}
+            {/* Functional card — tapping opens full-screen reading view */}
+            <FeedPaperCard
+                id="functional-card"
+                title={card.layers[0]?.headline ?? paperTitle ?? "Your personalised paper"}
+                description={card.layers[0]?.body ? (card.layers[0].body.slice(0, 160).trimEnd() + (card.layers[0].body.length > 160 ? "…" : "")) : null}
+                source={sourceLabel}
+                sourceColor={sourceColor}
+                date={new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                readTime={activeCardType === "C" ? "15 min read" : activeCardType === "B" ? "10 min read" : "6 min read"}
+                gradientFrom="#0d1b2a"
+                gradientTo="#1b263b"
+                patternOpacity={0.2}
+                isLoading={isLoading && !allGeneratedCards}
+                isPlaceholder={false}
+                onTap={() => setIsExpanded(true)}
             />
+
+            {/* Placeholder cards */}
+            {placeholderCards.map((pc) => (
+                <FeedPaperCard
+                    key={pc.id}
+                    id={pc.id}
+                    title={pc.title}
+                    description={pc.description}
+                    source={pc.source}
+                    sourceColor={pc.sourceColor}
+                    date={pc.date}
+                    readTime={pc.readTime}
+                    gradientFrom={pc.gradientFrom}
+                    gradientTo={pc.gradientTo}
+                    patternOpacity={pc.patternOpacity}
+                    isPlaceholder={true}
+                />
+            ))}
         </div>
 
-        {/* Expanded view bottom sheet — always in DOM, slides up on FeedCard tap */}
+        {/* Full-screen reading view — slides in when card is tapped */}
         <ExpandedView
             isOpen={isExpanded}
             onClose={() => setIsExpanded(false)}

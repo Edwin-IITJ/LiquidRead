@@ -9,8 +9,7 @@ import { calculateScore } from "@/lib/scoring";
 import { submitToSheet } from "@/lib/submitData";
 import ProgressBar from "./ProgressBar";
 import QuestionCard from "./QuestionCard";
-import CardDisplay from "./CardDisplay";
-import PersonaPanel from "./PersonaPanel";
+import FeedShell from "./FeedShell";
 import DemographicsScreen, { DemographicsAnswers } from "./DemographicsScreen";
 import OnboardingInterstitial from "./OnboardingInterstitial";
 import ThankYou from "./ThankYou";
@@ -307,51 +306,18 @@ export default function QuizApp() {
 
     if (state.appState === "card") {
         return (
-                <div className="flex flex-col h-screen overflow-hidden bg-[#F2EDE4] text-[#2C2218] font-sans">
-                {/* ── TOP BAR ── */}
-                <header className="h-[56px] px-6 flex items-center justify-between border-b border-[#DDD5C8] bg-[#FDFAF5] shrink-0">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-[#7C5C3E] rounded-md flex items-center justify-center">
-                            <span className="text-white text-xs font-bold leading-none">Lr</span>
-                        </div>
-                        <span className="font-semibold text-lg tracking-tight text-[#2C2218]">LiquidRead</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button className="text-[#9C8B78] hover:text-[#6B5C4A] transition-colors" aria-label="Settings">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        </button>
-                        <div className="w-8 h-8 rounded-full bg-[#E8E0D5] border border-[#DDD5C8] overflow-hidden flex items-end justify-center">
-                            <svg className="w-6 h-6 text-[#9C8B78] mb-[-2px]" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        </div>
-                    </div>
-                </header>
-
-                {/* ── 2-COLUMN MAIN LAYOUT ── */}
-                <div className="flex flex-1 overflow-hidden h-[calc(100vh-56px)]">
-                    <PersonaPanel
-                        cardType={state.cardShown}
-                        field={state.fieldGroup || "default"}
-                        readingGoal={state.answers.q4?.label}
-                        timeAvailable={state.answers.q6?.label}
-                        confusionResponse={state.answers.q1?.label}
-                        normalisedScore={state.normalisedScore}
-                    />
-            <main className="flex-1 min-w-0 overflow-y-auto bg-[#F2EDE4] flex flex-col">
-                        <CardDisplay
-                            cardType={state.cardShown}
-                            fieldGroup={state.fieldGroup || "default"}
-                            readingComfort={state.answers.q1?.label}
-                            readingGoal={state.answers.q4?.label}
-                            timeAvailable={state.answers.q6?.label}
-                            trustAnchor={state.answers.q9?.label}
-                            researchInterest={state.field}
-                            confusionResponse={state.answers.q1?.label}
-                            normalisedScore={state.normalisedScore}
-                            onProceed={handleCardProceed}
-                        />
-                    </main>
-                </div>
-            </div>
+            <FeedShell
+                cardType={state.cardShown}
+                fieldGroup={state.fieldGroup || "default"}
+                readingComfort={state.answers.q1?.label}
+                readingGoal={state.answers.q4?.label}
+                timeAvailable={state.answers.q6?.label}
+                trustAnchor={state.answers.q9?.label}
+                researchInterest={state.field}
+                confusionResponse={state.answers.q1?.label}
+                normalisedScore={state.normalisedScore}
+                onProceed={handleCardProceed}
+            />
         );
     }
 

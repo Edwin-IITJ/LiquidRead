@@ -19,10 +19,10 @@ const lora = Lora({
 
 export const metadata: Metadata = {
   title: "LiquidRead",
-  description: "A short quiz to calibrate how you read and use research.",
+  description: "Research papers, personalised to how you read. Discover and understand academic research at your level.",
   openGraph: {
     title: "LiquidRead",
-    description: "A short quiz to calibrate how you read and use research.",
+    description: "Research papers, personalised to how you read.",
     siteName: "LiquidRead",
   },
 };
@@ -34,7 +34,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${lora.variable}`}>
-      <body className="bg-[#F2EDE4] text-[#2C2218] font-sans antialiased">{children}</body>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#ffffff" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
+      <body className="bg-[#f8f9fa] text-[#1a1a2e] font-sans antialiased">{children}</body>
     </html>
   );
 }

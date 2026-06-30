@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { CardType } from "@/types/quiz";
 
 interface PersonaPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
     cardType: CardType;
     field: string;
     readingGoal?: string;
@@ -12,7 +14,7 @@ interface PersonaPanelProps {
     normalisedScore?: number;
 }
 
-function generatePersonaText(profile: PersonaPanelProps): string {
+function generatePersonaText(profile: Omit<PersonaPanelProps, "isOpen" | "onClose">): string {
     const depth =
         (profile.normalisedScore ?? 0) >= 6.5
             ? "technical depth"
@@ -40,21 +42,27 @@ function generatePersonaText(profile: PersonaPanelProps): string {
     return `You appear to be ${article} ${profile.field} researcher or professional who reads research for ${cleanedGoal}. You prefer ${profile.timeAvailable?.toLowerCase() ?? "moderate"} reading sessions and gravitate towards ${depth}. When something's unclear, you tend to ${cleanedconfusion}.`;
 }
 
-const DEPTH_LEVELS: { label: string; card: CardType }[] = [
-    { label: "Accessible", card: "A" },
-    { label: "Balanced", card: "B" },
-    { label: "Technical", card: "C" },
+const DEPTH_LEVELS: { label: string; card: CardType; description: string }[] = [
+    { label: "Simple", card: "A", description: "Easy-to-follow summaries" },
+    { label: "Balanced", card: "B", description: "Detail with context" },
+    { label: "Technical", card: "C", description: "Full academic depth" },
 ];
 
-export default function PersonaPanel({ cardType, field, readingGoal, timeAvailable, confusionResponse, normalisedScore }: PersonaPanelProps) {
+export default function PersonaPanel({
+    isOpen,
+    onClose,
+    cardType,
+    field,
+    readingGoal,
+    timeAvailable,
+    confusionResponse,
+    normalisedScore,
+}: PersonaPanelProps) {
     const basePersona = generatePersonaText({ cardType, field, readingGoal, timeAvailable, confusionResponse, normalisedScore });
 
     const [personaText, setPersonaText] = useState(basePersona);
-    const [isEditingPersona, setIsEditingPersona] = useState(false);
     const [personaDraft, setPersonaDraft] = useState(basePersona);
     const [userContext, setUserContext] = useState("");
-    const [isOpen, setIsOpen] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(true);
 
     useEffect(() => {
         const savedPersona = typeof window !== "undefined" ? localStorage.getItem("mtp-persona-override") : null;
@@ -66,149 +74,129 @@ export default function PersonaPanel({ cardType, field, readingGoal, timeAvailab
         if (savedContext) setUserContext(savedContext);
     }, []);
 
-    const contextCharLimit = Math.max(0, 300 - personaText.length);
-
-    const handlePersonaSave = useCallback(() => {
-        const trimmed = personaDraft.slice(0, 200);
-        setPersonaText(trimmed);
+    const handlePersonaChange = useCallback((val: string) => {
+        const trimmed = val.slice(0, 200);
         setPersonaDraft(trimmed);
-        setIsEditingPersona(false);
+        setPersonaText(trimmed);
         if (typeof window !== "undefined") localStorage.setItem("mtp-persona-override", trimmed);
-    }, [personaDraft]);
+    }, []);
 
     const handleContextChange = useCallback((val: string) => {
-        const trimmed = val.slice(0, contextCharLimit + userContext.length);
+        const trimmed = val.slice(0, 200);
         setUserContext(trimmed);
         if (typeof window !== "undefined") localStorage.setItem("mtp-user-context", trimmed);
-    }, [contextCharLimit, userContext.length]);
+    }, []);
 
     return (
         <>
-            {/* Mobile toggle button */}
-            <button
-                onClick={() => setIsOpen(true)}
-                className="md:hidden fixed top-4 left-4 z-30 bg-white border border-slate-200 rounded-lg p-2 shadow-sm text-slate-500 hover:text-slate-800 transition-colors"
-                aria-label="Open persona panel"
-            >
-                ☰
-            </button>
+            {/* Backdrop overlay */}
+            <div
+                className={`persona-backdrop ${isOpen ? "persona-backdrop--visible" : ""}`}
+                onClick={onClose}
+                aria-hidden="true"
+            />
 
-            {/* Sidebar */}
+            {/* Drawer panel */}
             <aside
-                className={`fixed top-[56px] left-0 h-[calc(100vh-56px)] bg-white border-r border-slate-200 shadow-[2px_0_8px_rgba(0,0,0,0.02)] z-50 transition-all duration-300 flex flex-col ${
-                    isOpen ? "translate-x-0" : "-translate-x-full"
-                } md:translate-x-0 md:static md:h-full md:shadow-none shrink-0 ${
-                    isCollapsed ? "w-[64px]" : "w-[320px]"
-                }`}
+                className={`persona-drawer ${isOpen ? "persona-drawer--open" : ""}`}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Personalisation Menu"
             >
-                {/* Header with toggle */}
-                <div className={`flex items-center p-4 shrink-0 transition-all ${isCollapsed ? 'justify-center' : 'justify-end'}`}>
-                    <button 
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="hidden md:flex text-slate-400 hover:text-slate-600 p-1"
-                        aria-label="Toggle sidebar"
-                        title="Toggle Sidebar"
+                {/* Header */}
+                <div className="persona-header">
+                    <h2 className="persona-title">Personalisation Menu</h2>
+                    <button
+                        onClick={onClose}
+                        className="persona-close-btn"
+                        aria-label="Close menu"
                     >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                     </button>
-                    <button 
-                        onClick={() => setIsOpen(false)}
-                        className="md:hidden text-slate-400 hover:text-slate-600 p-1"
-                        aria-label="Close persona panel"
-                    >
-                        ✕
-                    </button>
                 </div>
 
-                <div className={`flex-1 overflow-y-auto px-4 pb-6 scrollbar ${isCollapsed ? 'hidden md:opacity-0' : 'block md:opacity-100'} transition-opacity duration-300`}>
-                    <div className="flex flex-col gap-6">
+                {/* Content */}
+                <div className="persona-content">
+                    {/* User Persona */}
+                    <section className="persona-section">
+                        <div className="persona-section-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            <h3 className="persona-section-label">User Persona</h3>
+                        </div>
+                        <div className="persona-textarea-wrapper">
+                            <textarea
+                                value={personaDraft}
+                                onChange={(e) => handlePersonaChange(e.target.value)}
+                                placeholder="Focus on macro-economic trends in Southeast Asia..."
+                                maxLength={200}
+                                rows={4}
+                                className="persona-textarea"
+                            />
+                            <span className="persona-char-count">
+                                {personaDraft.length}/200
+                            </span>
+                        </div>
+                    </section>
 
-                        {/* ── Section A: How we see you ── */}
-                        <section>
-                            <h3 className="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-3 px-1">How We See You</h3>
-                            <div className="relative bg-white border border-slate-200 rounded-xl p-4 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)]">
-                                {!isEditingPersona ? (
-                                    <>
-                                        <p className="text-sm text-slate-600 leading-relaxed">{personaText}</p>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col gap-3">
-                                        <p className="text-xs text-indigo-600 italic">Editing this changes how your cards are personalised.</p>
-                                        <textarea
-                                            value={personaDraft}
-                                            onChange={(e) => setPersonaDraft(e.target.value.slice(0, 200))}
-                                            maxLength={200}
-                                            rows={5}
-                                            className="text-sm text-slate-700 border border-slate-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-slate-50"
-                                        />
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] text-slate-400">{personaDraft.length}/200</span>
-                                            <button
-                                                onClick={handlePersonaSave}
-                                                className="text-xs bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                                            >
-                                                Save
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </section>
+                    {/* Add more context */}
+                    <section className="persona-section">
+                        <div className="persona-section-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 5v14M5 12h14" />
+                            </svg>
+                            <h3 className="persona-section-label">Add more context</h3>
+                        </div>
+                        <div className="persona-textarea-wrapper">
+                            <textarea
+                                value={userContext}
+                                onChange={(e) => handleContextChange(e.target.value)}
+                                placeholder="Focus on macro-economic trends in Southeast Asia..."
+                                maxLength={200}
+                                rows={4}
+                                className="persona-textarea"
+                            />
+                            <span className="persona-char-count">
+                                {userContext.length}/200
+                            </span>
+                        </div>
+                    </section>
 
-                        {/* ── Section B: Add more context ── */}
-                        <section>
-                            <h3 className="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-3 px-1">Add More Context</h3>
-                            <div className="bg-slate-50 rounded-xl border border-slate-200/70 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-300 transition-all">
-                                <textarea
-                                    value={userContext}
-                                    onChange={(e) => handleContextChange(e.target.value)}
-                                    placeholder="Anything that helps — your current project, preferences, pet hates."
-                                    className="w-full h-[100px] text-sm text-slate-700 border-none resize-none focus:outline-none p-3 bg-transparent placeholder:text-slate-400"
-                                    disabled
-                                />
-                                <div className="px-3 pb-2 text-right">
-                                    <span className="text-[10px] text-slate-400 font-medium">
-                                        {userContext.length}/{contextCharLimit + userContext.length} chars
-                                    </span>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* ── Section C: Reading depth ── */}
-                        <section>
-                            <h3 className="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-3 px-1">Reading Depth</h3>
-                            <div className="flex bg-slate-100/80 p-1.5 rounded-full border border-slate-200/60">
-                                {DEPTH_LEVELS.map(({ label, card }) => {
-                                    const isActive = card === cardType;
-                                    return (
-                                        <div 
-                                            key={card} 
-                                            className={`flex-1 text-center py-2.5 rounded-full text-[11px] font-semibold transition-all duration-200 cursor-default ${
-                                                isActive
-                                                    ? "bg-indigo-600 text-white shadow-sm"
-                                                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                                            }`}
-                                        >
-                                            {label}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-
-                    </div>
+                    {/* Reading Depth */}
+                    <section className="persona-section">
+                        <div className="persona-section-header">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 20V10M18 20V4M6 20v-4" />
+                            </svg>
+                            <h3 className="persona-section-label">Reading Depth</h3>
+                        </div>
+                        <div className="persona-depth-list">
+                            {DEPTH_LEVELS.map(({ label, card }) => {
+                                const isActive = card === cardType;
+                                return (
+                                    <label
+                                        key={card}
+                                        className={`persona-depth-item ${isActive ? "persona-depth-item--active" : ""}`}
+                                    >
+                                        <span className="persona-depth-label">{label}</span>
+                                        <span className={`persona-depth-radio ${isActive ? "persona-depth-radio--checked" : ""}`}>
+                                            {isActive && (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                                </svg>
+                                            )}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </section>
                 </div>
             </aside>
-
-            {/* Mobile overlay */}
-            {isOpen && (
-                <div
-                    className="md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity"
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
         </>
     );
 }

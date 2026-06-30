@@ -218,45 +218,32 @@ export default function ExpandedView({
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Backdrop */}
+      {/* Full-screen reading view */}
       <div
-        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${
-          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Sheet */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 h-[95vh] bg-white rounded-t-2xl shadow-2xl
-          overflow-hidden flex flex-col transition-transform duration-300 ease-in-out
-          ${isOpen ? "translate-y-0" : "translate-y-full"}`}
+        className={`expanded-view ${isOpen ? "expanded-view--open" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Expanded paper view"
       >
-        {/* Drag handle */}
-        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mt-3 mb-2 flex-shrink-0" />
-
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-5 py-3 border-b border-slate-100 flex-shrink-0">
-          <p className="text-base font-semibold text-slate-800 leading-snug flex-1 min-w-0 line-clamp-2 pr-2">
-            {paperTitle}
-          </p>
+        {/* Header with back button */}
+        <header className="expanded-view-header">
           <button
             onClick={onClose}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full
-              bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700
-              transition-colors text-lg leading-none"
-            aria-label="Close expanded view"
+            className="expanded-view-back"
+            aria-label="Go back"
           >
-            ×
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
           </button>
-        </div>
+          <p className="expanded-view-title">
+            {paperTitle}
+          </p>
+          <div className="w-8" /> {/* Spacer for centering */}
+        </header>
 
         {/* Content area */}
-        <div className="flex-1 overflow-y-auto px-5 pb-8">
+        <div className="expanded-view-content">
 
           {/* Loading state */}
           {isLoading && (
