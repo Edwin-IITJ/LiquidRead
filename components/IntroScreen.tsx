@@ -5,7 +5,7 @@ export default function IntroScreen({ onStart }: { onStart: () => void }) {
         <div className="flex flex-col fade-in">
             <div className="max-w-[520px] w-full">
                 <div className="mb-6">
-                    <Image src="/logo-mark.png" alt="LiquidRead Mark" width={48} height={48} />
+                    <Image src="/logo-mark.png" alt="LiquidRead Mark" width={64} height={64} />
                 </div>
 
                 {/* Headline */}

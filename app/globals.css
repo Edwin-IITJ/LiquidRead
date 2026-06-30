@@ -81,19 +81,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
-  padding: 0 16px;
+  height: 60px; /* Slightly taller for a more open feel */
+  padding: 0 16px 0 8px; /* Less left padding for the hamburger icon */
   background: var(--feed-card-bg);
   border-bottom: 1px solid var(--feed-border);
   flex-shrink: 0;
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 10;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .topbar-brand-image {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  display: block;
+  margin-left: 4px;
 }
 
 .topbar-icon-btn {

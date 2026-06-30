@@ -8,24 +8,26 @@ interface TopBarProps {
 export default function TopBar({ onMenuOpen }: TopBarProps) {
     return (
         <header className="topbar">
-            <button
-                onClick={onMenuOpen}
-                className="topbar-icon-btn"
-                aria-label="Open menu"
-            >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M21 10H3M21 6H3M21 14H3M21 18H3" />
-                </svg>
-            </button>
+            <div className="topbar-left">
+                <button
+                    onClick={onMenuOpen}
+                    className="topbar-icon-btn"
+                    aria-label="Open menu"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M21 10H3M21 6H3M21 14H3M21 18H3" />
+                    </svg>
+                </button>
 
-            <Image 
-                src="/logo-full.png"
-                alt="LiquidRead Logo"
-                width={120}
-                height={28}
-                className="topbar-brand-image"
-                style={{ objectFit: 'contain' }}
-            />
+                <Image 
+                    src="/logo-full.png"
+                    alt="LiquidRead Logo"
+                    width={112}
+                    height={24}
+                    className="topbar-brand-image"
+                    style={{ objectFit: 'contain' }}
+                />
+            </div>
 
             <button
                 className="topbar-icon-btn topbar-profile"
