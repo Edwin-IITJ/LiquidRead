@@ -90,13 +90,7 @@ body {
   z-index: 10;
 }
 
-.topbar-brand {
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: 20px;
-  font-weight: 600;
-  font-style: italic;
-  color: var(--feed-text-primary);
-  letter-spacing: -0.3px;
+.topbar-brand-image {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);

@@ -1,11 +1,12 @@
+import Image from "next/image";
+
 export default function IntroScreen({ onStart }: { onStart: () => void }) {
     return (
         <div className="flex flex-col fade-in">
             <div className="max-w-[520px] w-full">
-                {/* Eyebrow */}
-                <p className="text-xs font-medium uppercase tracking-widest text-[#7C5C3E] mb-5">
-                    Meet LiquidRead
-                </p>
+                <div className="mb-6">
+                    <Image src="/logo-mark.png" alt="LiquidRead Mark" width={48} height={48} />
+                </div>
 
                 {/* Headline */}
                 <h1 className="text-3xl font-semibold text-[#2C2218] leading-tight mb-4">

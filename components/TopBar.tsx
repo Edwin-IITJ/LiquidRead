@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 interface TopBarProps {
     onMenuOpen: () => void;
@@ -17,7 +18,14 @@ export default function TopBar({ onMenuOpen }: TopBarProps) {
                 </svg>
             </button>
 
-            <span className="topbar-brand">LiquidRead</span>
+            <Image 
+                src="/logo-full.png"
+                alt="LiquidRead Logo"
+                width={120}
+                height={28}
+                className="topbar-brand-image"
+                style={{ objectFit: 'contain' }}
+            />
 
             <button
                 className="topbar-icon-btn topbar-profile"
