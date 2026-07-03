@@ -10,7 +10,7 @@ import { submitToSheet } from "@/lib/submitData";
 import ProgressBar from "./ProgressBar";
 import QuestionCard from "./QuestionCard";
 import FeedShell from "./FeedShell";
-import DemographicsScreen, { DemographicsAnswers } from "./DemographicsScreen";
+import DemographicsScreen from "./DemographicsScreen";
 import OnboardingInterstitial from "./OnboardingInterstitial";
 import ThankYou from "./ThankYou";
 import IntroScreen from "./IntroScreen";
@@ -170,6 +170,7 @@ export default function QuizApp() {
     useEffect(() => {
         if (typeof window === "undefined") return;
         if (localStorage.getItem("mtp-survey-done") === "true") {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setState((s) => ({ ...s, appState: "thankyou" }));
             return;
         }
@@ -484,10 +485,10 @@ export default function QuizApp() {
 
                     <div className="py-4">
                         <h2 className="text-2xl font-semibold text-[#2C2218] leading-snug mb-4">
-                            Got it. I'm shaping your first read.
+                            Got it. I&apos;m shaping your first read.
                         </h2>
                         <p className="text-sm text-[#6B5C4A] leading-relaxed mb-8">
-                            I'm using your answers to tune what shows up first, what gets explained,
+                            I&apos;m using your answers to tune what shows up first, what gets explained,
                             and how much depth feels useful.
                         </p>
 

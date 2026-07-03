@@ -60,7 +60,6 @@ export default function PersonaPanel({
 }: PersonaPanelProps) {
     const basePersona = generatePersonaText({ cardType, field, readingGoal, timeAvailable, confusionResponse, normalisedScore });
 
-    const [personaText, setPersonaText] = useState(basePersona);
     const [personaDraft, setPersonaDraft] = useState(basePersona);
     const [userContext, setUserContext] = useState("");
 
@@ -68,7 +67,6 @@ export default function PersonaPanel({
         const savedPersona = typeof window !== "undefined" ? localStorage.getItem("mtp-persona-override") : null;
         const savedContext = typeof window !== "undefined" ? localStorage.getItem("mtp-user-context") : null;
         if (savedPersona) {
-            setPersonaText(savedPersona);
             setPersonaDraft(savedPersona);
         }
         if (savedContext) setUserContext(savedContext);
@@ -77,7 +75,6 @@ export default function PersonaPanel({
     const handlePersonaChange = useCallback((val: string) => {
         const trimmed = val.slice(0, 200);
         setPersonaDraft(trimmed);
-        setPersonaText(trimmed);
         if (typeof window !== "undefined") localStorage.setItem("mtp-persona-override", trimmed);
     }, []);
 

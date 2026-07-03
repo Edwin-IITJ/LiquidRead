@@ -69,13 +69,13 @@ export default function ReflectionScreen({ onSubmit }: ReflectionScreenProps) {
                     {/* Scale labels */}
                     <div className="flex justify-between text-xs text-slate-500 mt-3 px-1">
                         <span className="w-20 sm:w-24 text-center leading-snug">
-                            1 &rarr; "Felt completely generic"
+                            1 &rarr; &quot;Felt completely generic&quot;
                         </span>
                         <span className="w-20 sm:w-24 text-center leading-snug hidden sm:block">
-                            3 &rarr; "Somewhat suited to me"
+                            3 &rarr; &quot;Somewhat suited to me&quot;
                         </span>
                         <span className="w-20 sm:w-24 text-center leading-snug">
-                            5 &rarr; "Felt made specifically for me"
+                            5 &rarr; &quot;Felt made specifically for me&quot;
                         </span>
                     </div>
 

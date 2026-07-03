@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { jsonrepair } from 'jsonrepair';
 import { fieldMap, FieldGroup } from "@/utils/fieldMap";
 import { reconstructAbstract } from "@/utils/reconstructAbstract";
-import allSubfields from "@/utils/subfieldMap";
+// import allSubfields from "@/utils/subfieldMap"; // Commented out — subfield selection bypassed in favour of OpenAlex search=
 
 // Strip HTML tags that OpenAlex occasionally embeds in titles/abstracts
 function stripHtml(str: string): string {
@@ -41,64 +41,32 @@ interface UserProfile {
     userContext?: string;
 }
 
-async function selectSubfield(fieldId: string | null, researchInterest: string | undefined, apiKey: string): Promise<string | null> {
-    if (!researchInterest) return null;
-
-    if (!allSubfields || allSubfields.length === 0) return null;
-
-    const subfieldList = allSubfields.map((s: { id: string; name: string }) => `${s.id}: ${s.name}`).join("\n");
-    const prompt = `You are a research librarian. The user has selected a broad field, but we need to narrow it down to the most relevant OpenAlex subfield based on their specific research interest.
-
-User's specific research interest: "${researchInterest}"
-
-Available OpenAlex subfields:
-${subfieldList}
-
-Select the SINGLE most relevant subfield ID from the list above. Return ONLY the subfield ID (e.g., "1208"). If no subfield is a good match, return "NONE". Do not include any other text.`;
-
-    try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.1,
-                        maxOutputTokens: 10,
-                    },
-                }),
-            }
-        );
-
-        if (!response.ok) {
-            const errorBody = await response.text();
-            console.error('Gemini Flash error:', response.status, errorBody);
-            return null;
-        }
-
-        const data = await response.json();
-        const rawText: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!rawText) {
-            console.log("!rawTex")
-            return null;
-        }
-        console.log('Gemini subfield raw response:', rawText);
-        const selectedId = rawText.trim();
-        if (selectedId === "NONE") return null;
-
-        // verify it's a valid ID from our list
-        if (allSubfields.some((s: { id: string; name: string }) => s.id === selectedId)) {
-            return selectedId;
-        }
-        return null;
-    } catch (error) {
-        console.error('selectSubfield() FAILED:', error);
-
-        return null;
-    }
-}
+// ─── Subfield selection via Gemini (COMMENTED OUT) ─────────────────────────────
+// Bypassed in favour of OpenAlex's native search= parameter, which handles
+// topic matching directly without an extra LLM call.  Kept for potential
+// future use.
+//
+// async function selectSubfield(fieldId: string | null, researchInterest: string | undefined, apiKey: string): Promise<string | null> {
+//     if (!researchInterest) return null;
+//     if (!allSubfields || allSubfields.length === 0) return null;
+//     const subfieldList = allSubfields.map((s: { id: string; name: string }) => `${s.id}: ${s.name}`).join("\n");
+//     const prompt = `You are a research librarian. The user has selected a broad field, but we need to narrow it down to the most relevant OpenAlex subfield based on their specific research interest.\n\nUser's specific research interest: "${researchInterest}"\n\nAvailable OpenAlex subfields:\n${subfieldList}\n\nSelect the SINGLE most relevant subfield ID from the list above. Return ONLY the subfield ID (e.g., "1208"). If no subfield is a good match, return "NONE". Do not include any other text.`;
+//     try {
+//         const response = await fetch(
+//             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+//             { method: "POST", headers: { "Content-Type": "application/json" },
+//               body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 10 } }) }
+//         );
+//         if (!response.ok) { console.error('Gemini Flash error:', response.status, await response.text()); return null; }
+//         const data = await response.json();
+//         const rawText: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+//         if (!rawText) return null;
+//         const selectedId = rawText.trim();
+//         if (selectedId === "NONE") return null;
+//         if (allSubfields.some((s: { id: string; name: string }) => s.id === selectedId)) return selectedId;
+//         return null;
+//     } catch (error) { console.error('selectSubfield() FAILED:', error); return null; }
+// }
 
 interface Paper {
     title: string;
@@ -127,34 +95,30 @@ interface OpenAlexWork {
     }>;
 }
 
-async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | null): Promise<Paper> {
+async function fetchPaperFromOpenAlex(fieldGroup: string, researchInterest?: string | null): Promise<Paper> {
     const fieldId = fieldMap[fieldGroup as FieldGroup];
 
+    // Determine the search term: prefer researchInterest; for "Other" fall back to fieldGroup text
+    const searchTerm = researchInterest?.trim() || (fieldId === null || fieldId === undefined ? fieldGroup : null);
+
+    // Build filter — always use field-level (not subfield) when we have a known field
     let filterString: string;
-    let sortString: string;
     if (fieldId !== null && fieldId !== undefined) {
-        if (subfieldId) {
-            filterString = `${BASE_FILTERS},topics.subfield.id:${subfieldId}`;
-        } else {
-            filterString = `${BASE_FILTERS},topics.field.id:${fieldId}`;
-            // // Apply Engineering exclusion if subfieldId isn't specifically used
-            // if (fieldId === "22") {
-            //     filterString += ",topics.subfield.id:!2204";
-            // }
-        }
-        sortString = "&sort=cited_by_count:desc";
+        filterString = `${BASE_FILTERS},topics.field.id:${fieldId}`;
     } else {
         filterString = BASE_FILTERS;
-        sortString = "&sort=relevance_score:desc";
     }
+
+    // Sort by relevance when we have a search term, otherwise by citation count
+    const sortString = searchTerm ? "&sort=relevance_score:desc" : "&sort=cited_by_count:desc";
 
     const openAlexUrl =
         `https://api.openalex.org/works` +
         `?filter=${filterString}` +
-        (fieldId === null ? `&search=${encodeURIComponent(fieldGroup)}` : "") +
+        (searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : "") +
         sortString +
         `&select=title,abstract_inverted_index,publication_year,cited_by_count,doi,ids,primary_location,authorships` +
-        `&per_page=10` +
+        `&per_page=5` +
         `&mailto=${MAILTO}`;
 
     console.log('OPENALEX URL:', openAlexUrl);
@@ -186,7 +150,8 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | 
         return FALLBACK_PAPER;
     }
 
-    const work: OpenAlexWork = validResults[Math.floor(Math.random() * validResults.length)];
+    // Pick the top result by relevance (not random) when we have a search term
+    const work: OpenAlexWork = validResults[0];
 
     const authorNames = (work.authorships ?? [])
         .slice(0, 3)
@@ -206,6 +171,90 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, subfieldId?: string | 
         pmcid: work.ids?.pmcid ?? null,
         doi: work.doi ?? null,
     };
+}
+
+// ─── Semantic Scholar fallback ─────────────────────────────────────────────────
+// Used when OpenAlex returns the fallback paper (no relevant results).
+// Semantic Scholar has superior ML-powered semantic search that handles
+// vague or natural-language queries better than OpenAlex keyword search.
+
+interface SemanticScholarPaper {
+    paperId: string;
+    title: string;
+    abstract: string | null;
+    year: number | null;
+    citationCount: number | null;
+    externalIds?: { DOI?: string; PubMedCentral?: string } | null;
+    journal?: { name?: string } | null;
+    authors?: Array<{ name?: string }> | null;
+}
+
+async function fetchPaperFromSemanticScholar(query: string, fieldGroup?: string): Promise<Paper | null> {
+    try {
+        // Map fieldGroup to Semantic Scholar's fieldsOfStudy values
+        const fieldOfStudyMap: Record<string, string> = {
+            Design: "Computer Science",
+            Engineering: "Engineering",
+            Sciences: "Physics",
+            "Social Sciences": "Sociology",
+            Humanities: "Philosophy",
+            Medicine: "Medicine",
+            Business: "Business",
+        };
+        const fieldOfStudy = fieldGroup ? fieldOfStudyMap[fieldGroup] : null;
+
+        const params = new URLSearchParams({
+            query,
+            limit: "5",
+            fields: "title,abstract,year,citationCount,externalIds,journal,authors",
+            // Only return papers from 2021 onwards
+            year: "2021-",
+        });
+        if (fieldOfStudy) {
+            params.set("fieldsOfStudy", fieldOfStudy);
+        }
+
+        const url = `https://api.semanticscholar.org/graph/v1/paper/search?${params.toString()}`;
+        console.log('SEMANTIC SCHOLAR URL:', url);
+
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const response = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+
+        if (!response.ok) {
+            console.warn('Semantic Scholar error:', response.status, response.statusText);
+            return null;
+        }
+
+        const data = await response.json();
+        const results: SemanticScholarPaper[] = data.data || [];
+
+        // Find the first result with a usable abstract
+        const validPaper = results.find(p => p.title && p.abstract && p.abstract.length >= 50);
+        if (!validPaper) return null;
+
+        const authorNames = (validPaper.authors ?? [])
+            .slice(0, 3)
+            .map(a => a.name ?? "")
+            .filter(Boolean);
+        const authors = authorNames.length > 0
+            ? authorNames.join(", ") + ((validPaper.authors?.length ?? 0) > 3 ? " et al." : "")
+            : "Unknown Authors";
+
+        return {
+            title: stripHtml(validPaper.title),
+            abstract: stripHtml(validPaper.abstract!),
+            year: validPaper.year ?? 0,
+            journal: validPaper.journal?.name ?? "Unknown Journal",
+            authors,
+            pmcid: validPaper.externalIds?.PubMedCentral ? `PMC${validPaper.externalIds.PubMedCentral}` : null,
+            doi: validPaper.externalIds?.DOI ? `https://doi.org/${validPaper.externalIds.DOI}` : null,
+        };
+    } catch (error) {
+        console.warn('Semantic Scholar fetch failed:', error);
+        return null;
+    }
 }
 
 // ─── Full text fetch (PMC → Europe PMC fallback) ──────────────────────────────
@@ -535,21 +584,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "generation_failed" }, { status: 500 });
         }
 
-        // Step 1 — Select subfield if applicable
-        const fieldId = fieldMap[fieldGroup as FieldGroup];
-        let subfieldId = null;
-        if (fieldId && userProfile.researchInterest) {
-            subfieldId = await selectSubfield(fieldId, userProfile.researchInterest, apiKey);
-            console.log(`Selected subfield for "${userProfile.researchInterest}":`, subfieldId);
-        }
-
-        // Step 2 — Fetch a real paper from OpenAlex
+        // Step 1 — Fetch a relevant paper from OpenAlex (using search= with the user's research interest)
         let paper: Paper;
         try {
-            paper = await fetchPaperFromOpenAlex(fieldGroup, subfieldId);
+            paper = await fetchPaperFromOpenAlex(fieldGroup, userProfile.researchInterest);
         } catch {
             console.warn("OpenAlex fetch failed, using FALLBACK_PAPER");
             paper = FALLBACK_PAPER;
+        }
+
+        // Step 1b — If OpenAlex returned the fallback paper, try Semantic Scholar as a fallback
+        const searchQuery = userProfile.researchInterest?.trim() || fieldGroup;
+        if (paper === FALLBACK_PAPER && searchQuery) {
+            console.log('OpenAlex returned no results, trying Semantic Scholar fallback...');
+            const ssPaper = await fetchPaperFromSemanticScholar(searchQuery, fieldGroup);
+            if (ssPaper) {
+                console.log('Semantic Scholar fallback succeeded:', ssPaper.title);
+                paper = ssPaper;
+            } else {
+                console.warn('Semantic Scholar fallback also returned no results, using FALLBACK_PAPER');
+            }
         }
 
         // Step 2b — Attempt full-text fetch from PMC
