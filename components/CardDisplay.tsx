@@ -729,10 +729,17 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Suppress unused variables from deprecated error UI
+    // Suppress unused variables from deprecated error UI and new block architecture
     void error;
     void setError;
     void hasError;
+    void setHasError;
+    void componentType;
+    void setComponentType;
+    void visualHints;
+    void setVisualHints;
+    void showGeneric;
+    void setShowGeneric;
 
     // Derive source label from fieldGroup
     const sourceLabel = (fieldGroup ?? "RESEARCH").toUpperCase();

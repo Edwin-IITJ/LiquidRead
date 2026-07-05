@@ -3,7 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
-import { type Block, type BlockLayer, VALID_BLOCK_TYPES, isValidBlock } from "@/types/blocks";
+import { type Block, VALID_BLOCK_TYPES, isValidBlock } from "@/types/blocks";
 
 // Strip HTML tags that may be embedded in OpenAlex titles
 function stripHtml(str: string): string {
@@ -500,6 +500,6 @@ export async function POST(request: Request) {
     return NextResponse.json(parsed, { status: 200 });
   } catch (error) {
     console.error("EXPANDED: unhandled error in route:", error);
-    return NextResponse.json({ error: "generation_failed" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

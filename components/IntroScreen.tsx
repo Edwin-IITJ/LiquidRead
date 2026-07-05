@@ -15,7 +15,7 @@ export default function IntroScreen({ onStart }: { onStart: () => void }) {
 
                 {/* Subheadline */}
                 <p className="text-base text-[#6B5C4A] leading-relaxed mb-8">
-                    Answer a few quick questions and I'll tune the first paper to your pace,
+                    Answer a few quick questions and I&apos;ll tune the first paper to your pace,
                     priorities, and curiosity.
                 </p>
 
@@ -25,7 +25,7 @@ export default function IntroScreen({ onStart }: { onStart: () => void }) {
                         <span className="text-[#7C5C3E] text-[10px] font-bold leading-none">A</span>
                     </span>
                     <p className="text-sm text-[#6B5C4A] italic">
-                        Hi, I'm Ari. I'll help set things up.
+                        Hi, I&apos;m Ari. I&apos;ll help set things up.
                     </p>
                 </div>
 

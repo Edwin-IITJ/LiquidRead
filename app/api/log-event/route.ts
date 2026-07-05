@@ -14,6 +14,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
     } catch (err) {
         console.error("log-event failed:", err);
-        return NextResponse.json({ ok: false }, { status: 500 });
+        return NextResponse.json({ ok: false, error: JSON.stringify(err) }, { status: 500 });
     }
 }

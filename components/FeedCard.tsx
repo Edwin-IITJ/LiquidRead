@@ -65,6 +65,8 @@ export default function FeedCard({
 }: FeedCardProps) {
   // No teaserText variable needed — hook is rendered as primary headline, previewText as teaser body
 
+  void cardVariant; // Suppress unused var
+
   return (
     <div
       role="button"

@@ -67,9 +67,13 @@ export default function PersonaPanel({
         const savedPersona = typeof window !== "undefined" ? localStorage.getItem("mtp-persona-override") : null;
         const savedContext = typeof window !== "undefined" ? localStorage.getItem("mtp-user-context") : null;
         if (savedPersona) {
+            // eslint-disable-next-line
             setPersonaDraft(savedPersona);
         }
-        if (savedContext) setUserContext(savedContext);
+        if (savedContext) {
+            // eslint-disable-next-line
+            setUserContext(savedContext);
+        }
     }, []);
 
     const handlePersonaChange = useCallback((val: string) => {

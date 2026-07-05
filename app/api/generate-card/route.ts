@@ -603,7 +603,7 @@ async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<
     for (let attempt = 1; attempt <= 3; attempt++) {
         res = await fetch(url, options);
         if (res.ok) return res;
-        
+
         if (res.status === 503 || res.status === 429) {
             if (attempt < 3) {
                 const waitMs = attempt === 1 ? 2000 : 4000;
