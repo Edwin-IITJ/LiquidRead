@@ -1,8 +1,9 @@
 // GEMINI_API_KEY must be set in .env.local — never use NEXT_PUBLIC prefix
-// Uses gemini-2.5-flash with thinking enabled
+// Uses gemini-2.5-flash — block-based generative UI output
 
 import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
+import { type Block, type BlockLayer, VALID_BLOCK_TYPES, isValidBlock } from "@/types/blocks";
 
 // Strip HTML tags that may be embedded in OpenAlex titles
 function stripHtml(str: string): string {
@@ -23,100 +24,18 @@ interface ExpandedRequestBody {
   fieldGroup: string;
 }
 
-// ─── Output shape ─────────────────────────────────────────────────────────────
-
-interface VisualSpec {
-  visualType:
-  | "StatCallout"
-  | "ProportionStrip"
-  | "DumbbellStrip"
-  | "ComparisonTable"
-  | "SlopeStrip"
-  | "StepDiagram"
-  | "RankStrip";
-  data: Record<string, unknown>;
-  caption: string | null;
-}
-
-interface SectionOutput {
-  label: string;
-  text: string;
-  visual: VisualSpec | null;
-  visualPosition: "above" | "below" | null;
-}
+// ─── Output shape (block-based) ──────────────────────────────────────────────
 
 interface ExpandedOutput {
   hook: string;
   sectionOrder: string[];
-  sections: Record<string, SectionOutput>;
+  sections: Record<string, {
+    label: string;
+    blocks: Block[];
+  }>;
 }
 
-// ─── Validation ───────────────────────────────────────────────────────────────
-
-const VALID_VISUAL_TYPES = [
-  "StatCallout",
-  "ProportionStrip",
-  "DumbbellStrip",
-  "ComparisonTable",
-  "SlopeStrip",
-  "StepDiagram",
-  "RankStrip",
-] as const;
-
-function validateVisualData(
-  visualType: string,
-  data: Record<string, unknown>
-): boolean {
-  switch (visualType) {
-    case "StatCallout":
-      return typeof data.value === "string" && typeof data.label === "string";
-    case "ProportionStrip":
-      return (
-        typeof data.value === "number" &&
-        typeof data.unit === "string" &&
-        typeof data.label === "string" &&
-        typeof data.comparisonLabel === "string"
-      );
-    case "DumbbellStrip":
-      return (
-        (typeof data.leftValue === "string" ||
-          typeof data.leftValue === "number") &&
-        typeof data.leftLabel === "string" &&
-        (typeof data.rightValue === "string" ||
-          typeof data.rightValue === "number") &&
-        typeof data.rightLabel === "string" &&
-        typeof data.delta === "string" &&
-        typeof data.unit === "string"
-      );
-    case "ComparisonTable":
-      return (
-        typeof data.leftHeader === "string" &&
-        typeof data.rightHeader === "string" &&
-        Array.isArray(data.rows) &&
-        (data.rows as unknown[]).length > 0
-      );
-    case "SlopeStrip":
-      return (
-        typeof data.beforeLabel === "string" &&
-        typeof data.beforeValue === "number" &&
-        typeof data.afterLabel === "string" &&
-        typeof data.afterValue === "number" &&
-        typeof data.unit === "string" &&
-        (data.direction === "up" || data.direction === "down") &&
-        typeof data.deltaLabel === "string"
-      );
-    case "StepDiagram":
-      return Array.isArray(data.steps) && (data.steps as unknown[]).length > 0;
-    case "RankStrip":
-      return (
-        typeof data.unit === "string" &&
-        Array.isArray(data.items) &&
-        (data.items as unknown[]).length > 0
-      );
-    default:
-      return false;
-  }
-}
+// ─── Validation ──────────────────────────────────────────────────────────────
 
 function validateExpandedOutput(raw: unknown): raw is ExpandedOutput {
   if (typeof raw !== "object" || raw === null) return false;
@@ -140,7 +59,7 @@ function validateExpandedOutput(raw: unknown): raw is ExpandedOutput {
   const sections = r.sections as Record<string, unknown>;
   const sectionOrder = r.sectionOrder as string[];
 
-  // sectionOrder must exactly match sections keys
+  // sectionOrder must match sections keys
   const sectionKeys = Object.keys(sections);
   const orderSet = new Set(sectionOrder);
   const keysMatch =
@@ -155,9 +74,7 @@ function validateExpandedOutput(raw: unknown): raw is ExpandedOutput {
     return false;
   }
 
-  // Only one section may have a non-null visual
-  let visualCount = 0;
-
+  // Validate each section's blocks
   for (const [id, sec] of Object.entries(sections)) {
     const s = sec as Record<string, unknown>;
 
@@ -165,74 +82,35 @@ function validateExpandedOutput(raw: unknown): raw is ExpandedOutput {
       console.warn(`EXPANDED VALIDATION: section "${id}" missing label`);
       return false;
     }
-    if (typeof s.text !== "string" || s.text.trim() === "") {
-      console.warn(`EXPANDED VALIDATION: section "${id}" missing text`);
-      return false;
-    }
-    if (
-      s.visualPosition !== null &&
-      s.visualPosition !== "above" &&
-      s.visualPosition !== "below"
-    ) {
-      console.warn(
-        `EXPANDED VALIDATION: section "${id}" invalid visualPosition`
-      );
+
+    if (!Array.isArray(s.blocks) || (s.blocks as unknown[]).length === 0) {
+      console.warn(`EXPANDED VALIDATION: section "${id}" missing or empty blocks array`);
       return false;
     }
 
-    if (s.visual !== null && s.visual !== undefined) {
-      visualCount++;
-      const v = s.visual as Record<string, unknown>;
-
-      if (!VALID_VISUAL_TYPES.includes(v.visualType as (typeof VALID_VISUAL_TYPES)[number])) {
-        console.warn(
-          `EXPANDED VALIDATION: section "${id}" has invalid visualType:`,
-          v.visualType
-        );
-        // Null out invalid visual rather than failing the whole request
-        s.visual = null;
-        s.visualPosition = null;
-        visualCount--;
-        continue;
-      }
-
-      if (
-        typeof v.data !== "object" ||
-        v.data === null ||
-        !validateVisualData(v.visualType as string, v.data as Record<string, unknown>)
-      ) {
-        console.warn(
-          `EXPANDED VALIDATION: section "${id}" visual data failed validation — nulling out`
-        );
-        s.visual = null;
-        s.visualPosition = null;
-        visualCount--;
+    // Filter out invalid blocks instead of failing entirely
+    const validBlocks: Block[] = [];
+    for (const block of s.blocks as unknown[]) {
+      if (isValidBlock(block)) {
+        validBlocks.push(block);
+      } else {
+        console.warn(`EXPANDED VALIDATION: section "${id}" has invalid block:`, JSON.stringify(block).slice(0, 200));
       }
     }
-  }
 
-  if (visualCount > 1) {
-    console.warn(
-      `EXPANDED VALIDATION: ${visualCount} sections have visuals — keeping only first, nulling rest`
-    );
-    let kept = 0;
-    for (const sec of Object.values(sections)) {
-      const s = sec as Record<string, unknown>;
-      if (s.visual !== null && s.visual !== undefined) {
-        if (kept === 0) {
-          kept++;
-        } else {
-          s.visual = null;
-          s.visualPosition = null;
-        }
-      }
+    if (validBlocks.length === 0) {
+      console.warn(`EXPANDED VALIDATION: section "${id}" has no valid blocks after filtering`);
+      return false;
     }
+
+    // Replace blocks with only valid ones
+    s.blocks = validBlocks;
   }
 
   return true;
 }
 
-// ─── Prompt builder ───────────────────────────────────────────────────────────
+// ─── Prompt builder ──────────────────────────────────────────────────────────
 
 function buildExpandedPrompt(body: ExpandedRequestBody): {
   systemInstructionText: string;
@@ -257,62 +135,69 @@ Never write a sentence that earns nothing. Cut it.`;
 - Write like a sharp science journalist, not an AI assistant.
 - Do not add claims not in the paper.`;
 
-  const systemInstructionText = `You are a research translator. Generate personalised expanded views of academic papers for a specific reader.\n\n${philosophy}\n\n${rules}`;
+  const systemInstructionText = `You are a research translator. Generate personalised expanded views of academic papers using a block-based content system.\n\n${philosophy}\n\n${rules}`;
 
   const personalisationRules = `PERSONALISATION RULES:
-- cardVariant A: plain language, short sentences, relatable analogies, avoid field terminology
-- cardVariant B: clear language, some field terminology explained in-line, moderate length
-- cardVariant C: full technical language, precise values, no analogies, assume domain fluency
+- cardVariant A: plain language, short sentences, relatable analogies, avoid field terminology. Prefer paragraph, callout, and key_points blocks. Use stat_highlight only for the single most important number.
+- cardVariant B: clear language, some field terminology explained in-line, moderate length. Use a mix of all block types. Include comparison_pair or two_column when the paper compares groups.
+- cardVariant C: full technical language, precise values, no analogies, assume domain fluency. Lead with data-heavy blocks (stat_highlight, comparison_pair). Use paragraph blocks for methodology and limitations.
 
 SECTION ORDER RULES (apply in priority order):
 - normalisedScore <= 4: hook first, method section last
 - normalisedScore 4-7: hook first, finding second
 - normalisedScore >= 7: method section before finding (sceptic-first ordering)
 - timeAvailable contains "5 min": generate max 3 sections total
-- trustAnchor contains "data": place the section with the visual immediately after the hook section
+- trustAnchor contains "data": place the section with data visualisation blocks immediately after the hook
 - confusionResponse contains "simpler": place a context/background section before the finding section`;
 
+  const blockSpec = `BLOCK TYPES — compose each section from these typed blocks:
+
+paragraph: { "type": "paragraph", "text": "<body text>" }
+  Use for: exposition, explanation, narrative flow.
+
+heading: { "type": "heading", "text": "<heading text>", "level": 2|3 }
+  Use for: sub-headings within a section. level 2 = major, level 3 = minor. Optional, use sparingly.
+
+stat_highlight: { "type": "stat_highlight", "value": "<number>", "label": "<what it means>", "context": "<optional comparison>" }
+  Use for: when a single number IS the finding. value must be short (e.g. "81%", "27%", "1,795"). label max 10 words.
+
+callout: { "type": "callout", "variant": "insight"|"warning"|"context", "text": "<text>" }
+  Use for: key takeaways (insight), caveats/limitations (warning), background context (context).
+
+comparison_pair: { "type": "comparison_pair", "left": { "value": "<str>", "label": "<str>" }, "right": { "value": "<str>", "label": "<str>" }, "delta": "<optional str>" }
+  Use for: treatment vs control, before vs after, group A vs group B.
+
+key_points: { "type": "key_points", "heading": "<optional str>", "items": ["<point 1>", "<point 2>", ...] }
+  Use for: summarising multiple findings, listing implications, methodology steps.
+
+two_column: { "type": "two_column", "left": { "heading": "<str>", "items": ["<item>", ...] }, "right": { "heading": "<str>", "items": ["<item>", ...] } }
+  Use for: comparing two categories, contrasting two time periods, listing attributes of two groups.
+
+source_badge: { "type": "source_badge", "journal": "<str>", "year": <number>, "doi": "<str or null>" }
+  Use for: citation at the end of a section. Include in the last section only.
+
+BLOCK COMPOSITION RULES:
+- Each section MUST have at least one paragraph block.
+- Use 2-6 blocks per section. Do NOT put everything in one paragraph.
+- VARY the block types across sections. Do not use only paragraph blocks.
+- At least ONE section must contain a non-paragraph block (stat_highlight, comparison_pair, two_column, key_points, or callout).
+- Use callout blocks for the most important insight and for any major caveat.
+- Use source_badge in the final section only.`;
+
   const taskSpec = `TASK:
-You are generating a personalised expanded view of the following paper for a specific reader.
-Follow these 5 steps exactly. Think through each step before writing the output.
+Generate a personalised expanded view of the following paper for a specific reader.
+Think through these steps:
 
-STEP 1 — STORY
-What is the single most important, surprising, or counterintuitive thing about this paper?
-Write it as one sentence, max 20 words. This becomes the hook.
+STEP 1 — What is the single most important, surprising, or counterintuitive thing about this paper? Write it as one sentence, max 20 words. This becomes the hook.
 
-STEP 2 — DATA
-What is the single most important number, comparison, or statistic that proves the hook?
-Extract the exact values from the abstract.
+STEP 2 — What is the core data? Extract the key numbers, comparisons, or statistics from the abstract.
 
-STEP 3 — VISUAL FORM
-Based on STEP 2, select ONE visualType from:
-- StatCallout: one dominant number IS the finding
-- ProportionStrip: X% of something is the finding
-- DumbbellStrip: comparing two groups or before/after
-- ComparisonTable: two groups with multiple attributes
-- SlopeStrip: change over time with clear direction
-- StepDiagram: a process or mechanism with clear steps
-- RankStrip: a ranked list of items
-
-STEP 4 — SECTIONS
-Generate 4-6 sections. Each section must have:
+STEP 3 — Generate 4-6 sections. Each section has:
 - sectionId: unique, lowercase_underscore, descriptive
 - label: short display label, 2-4 words
-- text: personalised body text matching cardVariant ${body.cardVariant}
-- visual: the visualSpec for ONE section only (the most important one). Set visual: null for all other sections.
-- visualPosition: "above" | "below" | null (null if visual is null)
+- blocks: an array of typed blocks from the palette above
 
-STEP 5 — ORDERING
-Order the sectionIds in sectionOrder following the personalisation rules above.`;
-
-  const visualSpecRef = `VISUAL SPEC FORMAT (use exact field names):
-StatCallout: { value: string, label: string, comparisonValue: string|null, comparisonLabel: string|null }
-ProportionStrip: { value: number (0-100), unit: string, label: string, comparisonLabel: string }
-DumbbellStrip: { leftValue: string|number, leftLabel: string, rightValue: string|number, rightLabel: string, delta: string, unit: string }
-ComparisonTable: { leftHeader: string, rightHeader: string, rows: [{ label: string, leftValue: string, rightValue: string }] } (max 4 rows)
-SlopeStrip: { beforeLabel: string, beforeValue: number, afterLabel: string, afterValue: number, unit: string, direction: "up"|"down", deltaLabel: string }
-StepDiagram: { steps: string[] } (max 5 items, each max 8 words)
-RankStrip: { unit: string, items: [{ label: string, value: number }] } (max 5 items)`;
+STEP 4 — Order the sectionIds in sectionOrder following the personalisation rules above.`;
 
   const outputSchema = `OUTPUT FORMAT — return valid JSON only, no markdown fences:
 {
@@ -321,18 +206,17 @@ RankStrip: { unit: string, items: [{ label: string, value: number }] } (max 5 it
   "sections": {
     "<sectionId1>": {
       "label": "<2-4 word display label>",
-      "text": "<personalised section body>",
-      "visual": { "visualType": "<one of 7 types>", "data": { ... }, "caption": "<string or null>" } | null,
-      "visualPosition": "above" | "below" | null
+      "blocks": [
+        { "type": "<block_type>", ... },
+        { "type": "<block_type>", ... }
+      ]
     }
   }
 }
 
 CONSTRAINTS:
 - sectionOrder must contain exactly the same IDs as the keys in sections
-- Only ONE section may have a non-null visual
-- visualType must be one of the 7 defined types
-- If the paper does not support a good visual, set all visuals to null
+- Each block must have a "type" field matching one of: ${VALID_BLOCK_TYPES.join(", ")}
 - Return only the JSON object — no explanation, no preamble`;
 
   const readerContext = `READER CONTEXT:
@@ -353,7 +237,7 @@ Abstract: ${body.paperAbstract}`;
     personalisationRules,
     paperContext,
     taskSpec,
-    visualSpecRef,
+    blockSpec,
     outputSchema,
   ].join("\n\n");
 
@@ -363,7 +247,7 @@ Abstract: ${body.paperAbstract}`;
     personalisationRules: personalisationRules.length,
     paperContext: paperContext.length,
     taskSpec: taskSpec.length,
-    visualSpecRef: visualSpecRef.length,
+    blockSpec: blockSpec.length,
     outputSchema: outputSchema.length,
     totalDynamicChars: dynamicPrompt.length,
     totalChars: systemInstructionText.length + dynamicPrompt.length,
@@ -372,7 +256,82 @@ Abstract: ${body.paperAbstract}`;
   return { systemInstructionText, dynamicPrompt };
 }
 
-// ─── Route handler ────────────────────────────────────────────────────────────
+// ─── Streaming helpers ───────────────────────────────────────────────────────
+
+/** Accumulate Gemini streaming chunks and return the complete text */
+async function streamGeminiToText(
+  apiKey: string,
+  systemInstructionText: string,
+  dynamicPrompt: string
+): Promise<{ text: string; tokenInfo: Record<string, unknown> }> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemInstructionText }] },
+      contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Gemini API error ${res.status}: ${errorBody.slice(0, 300)}`);
+  }
+
+  // Read SSE stream and accumulate text
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body from Gemini streaming");
+
+  const decoder = new TextDecoder();
+  let accumulated = "";
+  let tokenInfo: Record<string, unknown> = {};
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Process complete SSE events
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? ""; // Keep incomplete event in buffer
+
+    for (const event of events) {
+      const lines = event.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const chunk = JSON.parse(jsonStr);
+            const parts = chunk?.candidates?.[0]?.content?.parts ?? [];
+            for (const part of parts) {
+              if (part.text) accumulated += part.text;
+            }
+            // Capture token info from final chunk
+            if (chunk?.usageMetadata) {
+              tokenInfo = chunk.usageMetadata;
+            }
+          } catch {
+            // Skip unparseable chunks
+          }
+        }
+      }
+    }
+  }
+
+  return { text: accumulated, tokenInfo };
+}
+
+// ─── Non-streaming fallback ──────────────────────────────────────────────────
 
 async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<Response> {
   let res: Response | null = null;
@@ -392,6 +351,8 @@ async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<
   }
   return res!;
 }
+
+// ─── Route handler ───────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
@@ -453,50 +414,55 @@ export async function POST(request: Request) {
       fieldGroup,
     });
 
-    // ── Gemini API call ────────────────────────────────────────────────────────
-    const geminiResponse = await fetchGeminiWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstructionText }] },
-          contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 8192,
-            thinkingConfig: {
-              thinkingBudget: 0,
-            },
-          },
-        }),
-      }
-    );
+    // ── Try streaming first, fall back to non-streaming ───────────────────────
+    let rawText: string;
+    let diagnosticInfo: Record<string, unknown> = {};
 
-    if (!geminiResponse.ok) {
-      const errorBody = await geminiResponse.text();
-      console.error("EXPANDED: Gemini API error:", geminiResponse.status, errorBody);
-      return NextResponse.json({ error: "generation_failed" }, { status: 500 });
+    try {
+      const result = await streamGeminiToText(apiKey, systemInstructionText, dynamicPrompt);
+      rawText = result.text;
+      diagnosticInfo = result.tokenInfo;
+      console.log("EXPANDED: streaming succeeded, text length:", rawText.length);
+    } catch (streamErr) {
+      console.warn("EXPANDED: streaming failed, falling back to non-streaming:", streamErr);
+
+      // Non-streaming fallback
+      const geminiResponse = await fetchGeminiWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemInstructionText }] },
+            contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8192,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        }
+      );
+
+      if (!geminiResponse.ok) {
+        const errorBody = await geminiResponse.text();
+        console.error("EXPANDED: Gemini API error:", geminiResponse.status, errorBody);
+        return NextResponse.json({ error: "generation_failed" }, { status: 500 });
+      }
+
+      const geminiData = await geminiResponse.json();
+      const parts: Array<{ text?: string }> =
+        geminiData?.candidates?.[0]?.content?.parts ?? [];
+      rawText = parts
+        .filter((p) => p.text !== undefined)
+        .map((p) => p.text!)
+        .join("");
+      diagnosticInfo = geminiData?.usageMetadata ?? {};
     }
 
-    const geminiData = await geminiResponse.json();
-
-    // With thinking enabled, the text part may be the second part (first is the thinking part)
-    const parts: Array<{ text?: string }> =
-      geminiData?.candidates?.[0]?.content?.parts ?? [];
-    const rawText: string | undefined = parts
-      .filter((p) => p.text !== undefined)
-      .map((p) => p.text!)
-      .join("");
-
     console.log("EXPANDED GEMINI DIAGNOSTICS:", {
-      httpStatus: geminiResponse.status,
-      finishReason: geminiData?.candidates?.[0]?.finishReason,
-      candidatesTokenCount: geminiData?.usageMetadata?.candidatesTokenCount,
-      thoughtsTokenCount: geminiData?.usageMetadata?.thoughtsTokenCount,
-      totalTokenCount: geminiData?.usageMetadata?.totalTokenCount,
       rawTextLength: rawText?.length,
-      partsCount: parts.length,
+      ...diagnosticInfo,
     });
 
     if (!rawText) {

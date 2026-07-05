@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { jsonrepair } from 'jsonrepair';
 import { fieldMap, FieldGroup } from "@/utils/fieldMap";
 import { reconstructAbstract } from "@/utils/reconstructAbstract";
+import { isValidBlock } from "@/types/blocks";
 // import allSubfields from "@/utils/subfieldMap"; // Commented out — subfield selection bypassed in favour of OpenAlex search=
 
 // Strip HTML tags that OpenAlex occasionally embeds in titles/abstracts
@@ -448,12 +449,33 @@ Abstract: ${stripHtml(paper.abstract)}`;
 - Card C: Use Methods, Results, and Discussion sections where provided. Card C readers want precision — include specific numbers, named techniques, and stated limitations. Still write clearly; do not copy-paste raw XML artefacts.`
         : '';
 
-    const taskAndSchema = `Gen 3 cards. body≥20chars.
+    const blockSpec = `BLOCK TYPES — compose each layer from these typed blocks:
+paragraph: { "type": "paragraph", "text": "<body text>" }
+heading: { "type": "heading", "text": "<heading text>", "level": 2|3 }
+stat_highlight: { "type": "stat_highlight", "value": "<number>", "label": "<what it means>", "context": "<optional comparison>" }
+callout: { "type": "callout", "variant": "insight"|"warning"|"context", "text": "<text>" }
+comparison_pair: { "type": "comparison_pair", "left": { "value": "<str>", "label": "<str>" }, "right": { "value": "<str>", "label": "<str>" }, "delta": "<optional str>" }
+key_points: { "type": "key_points", "heading": "<optional str>", "items": ["<point 1>", "<point 2>", ...] }
+two_column: { "type": "two_column", "left": { "heading": "<str>", "items": ["<item>", ...] }, "right": { "heading": "<str>", "items": ["<item>", ...] } }
+source_badge: { "type": "source_badge", "journal": "<str>", "year": <number>, "doi": "<str or null>" }
+
+Rules:
+- Each layer MUST have "blocks": an array of typed block objects.
+- Use 1-4 blocks per layer. Do NOT put everything in one paragraph block.
+- Preview layers (layer 0): use 1-2 blocks (heading + paragraph, or stat_highlight + paragraph).
+- Content layers: VARY block types. At least one layer must contain a non-paragraph block.
+- Card A: prefer paragraph, callout, key_points. Use stat_highlight only for the hero stat.
+- Card B: use full variety. Include comparison_pair or two_column when the paper compares groups.
+- Card C: lead with data blocks (stat_highlight, comparison_pair). Use paragraph for methodology.`;
+
+    const taskAndSchema = `Gen 3 cards using block-based layers.
 A:0,Preview(hook+teaser) 1,The story(plain+stat) 2,How they found it(method+link)
 B:0,Preview(hook+teaser) 1,The finding(stats+VISUAL+trustAnchor) 2,How they found it(method) 3,So what(implic+link)
 C:0,Preview(technical) 1,Key findings(quant+p-vals) 2,Methodology and limitations(pipeline+limits)
 JSON only:
-{"A":{"maxLayer":2,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The story","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"}]},"B":{"maxLayer":3,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"The finding","headline":null,"body":"<str>"},{"label":"How they found it","headline":null,"body":"<str>"},{"label":"So what","headline":null,"body":"<str>"}]},"C":{"maxLayer":2,"layers":[{"label":"Preview","headline":"<str>","body":"<str>"},{"label":"Key findings","headline":null,"body":"<str>"},{"label":"Methodology and limitations","headline":null,"body":"<str>"}]}}
+{"A":{"maxLayer":2,"layers":[{"label":"Preview","blocks":[{"type":"heading","text":"<str>","level":2},{"type":"paragraph","text":"<str>"}]},{"label":"The story","blocks":[{"type":"paragraph","text":"<str>"},{"type":"stat_highlight","value":"<str>","label":"<str>"}]},{"label":"How they found it","blocks":[{"type":"paragraph","text":"<str>"}]}]},"B":{"maxLayer":3,"layers":[{"label":"Preview","blocks":[{"type":"heading","text":"<str>","level":2},{"type":"paragraph","text":"<str>"}]},{"label":"The finding","blocks":[{"type":"stat_highlight","value":"<str>","label":"<str>"},{"type":"paragraph","text":"<str>"}]},{"label":"How they found it","blocks":[{"type":"paragraph","text":"<str>"}]},{"label":"So what","blocks":[{"type":"paragraph","text":"<str>"}]}]},"C":{"maxLayer":2,"layers":[{"label":"Preview","blocks":[{"type":"heading","text":"<str>","level":2},{"type":"paragraph","text":"<str>"}]},{"label":"Key findings","blocks":[{"type":"stat_highlight","value":"<str>","label":"<str>"},{"type":"paragraph","text":"<str>"}]},{"label":"Methodology and limitations","blocks":[{"type":"paragraph","text":"<str>"}]}]}}
+
+${blockSpec}
 
 ---
 COMPONENT CLASSIFICATION:
@@ -510,7 +532,6 @@ function validateCards(cards: unknown): boolean {
         const layers = card.layers as unknown[] | undefined;
         const maxLayer = card.maxLayer as number | undefined;
 
-        // Check layer count matches maxLayer + 1
         if (!Array.isArray(layers)) return false;
         if (typeof maxLayer !== "number") return false;
         if (layers.length < 2) {
@@ -518,15 +539,41 @@ function validateCards(cards: unknown): boolean {
             return false;
         }
 
-        // Check each layer has label and body
+        // Check each layer — supports both block-based and legacy format
         for (const layer of layers) {
             const l = layer as Record<string, unknown>;
             if (typeof l.label !== "string" || l.label.trim() === "") {
                 console.warn(`Card ${key} layer missing or empty label`);
                 return false;
             }
-            if (typeof l.body !== "string" || l.body.trim().length < 20) {
-                console.warn(`Card ${key} layer "${l.label}": body too short or missing`);
+
+            // Block-based format: has "blocks" array
+            if (Array.isArray(l.blocks)) {
+                const validBlocks = (l.blocks as unknown[]).filter(isValidBlock);
+                if (validBlocks.length === 0) {
+                    console.warn(`Card ${key} layer "${l.label}": no valid blocks`);
+                    return false;
+                }
+                l.blocks = validBlocks;
+            }
+            // Legacy format: has "body" string — convert to blocks
+            else if (typeof l.body === "string" && l.body.trim().length >= 20) {
+                const blocks = [];
+                if (l.headline && typeof l.headline === "string") {
+                    blocks.push({ type: "heading", text: l.headline, level: 2 });
+                }
+                const paragraphs = (l.body as string)
+                    .split(/\n{2,}/)
+                    .map((p: string) => p.trim())
+                    .filter(Boolean);
+                for (const p of paragraphs) {
+                    blocks.push({ type: "paragraph", text: p });
+                }
+                l.blocks = blocks;
+                // Keep body for backward compat in case CardDisplay still reads it
+            }
+            else {
+                console.warn(`Card ${key} layer "${l.label}": no blocks and no valid body`);
                 return false;
             }
         }

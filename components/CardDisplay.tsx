@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CardType } from "@/types/quiz";
+import type { Block } from "@/types/blocks";
+import { legacyLayerToBlocks } from "@/types/blocks";
 import { logEvent } from "@/utils/logEvent";
 import { getSessionId } from "@/utils/sessionId";
 import ExpandedView from "@/components/ExpandedView";
@@ -558,7 +560,15 @@ function mapTrustAnchor(q9Answer: string | undefined): string {
 
 export default function CardDisplay({ cardType, fieldGroup, readingComfort, readingGoal, timeAvailable, trustAnchor, researchInterest, confusionResponse, normalisedScore, onProceed }: CardDisplayProps) {
     // AI-generated card state
-    type CardContent = typeof DEFAULT_PAPER["A"];
+    type CardContent = {
+        maxLayer: number;
+        layers: Array<{
+            label: string;
+            headline?: string | null;
+            body?: string;
+            blocks?: Block[];
+        }>;
+    };
     const [allGeneratedCards, setAllGeneratedCards] = useState<{ A: CardContent; B: CardContent; C: CardContent } | null>(null);
     const [paperTitle, setPaperTitle] = useState<string | null>(null);
     const [paperAbstract, setPaperAbstract] = useState<string | null>(null);
@@ -599,14 +609,38 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         layers: [
             {
                 label: "Original abstract",
-                headline: paperTitle,
-                body: paperAbstract.length > 400 ? paperAbstract.substring(0, 400) + "..." : paperAbstract,
+                blocks: [
+                    { type: "heading" as const, text: paperTitle, level: 2 as const },
+                    { type: "paragraph" as const, text: paperAbstract.length > 400 ? paperAbstract.substring(0, 400) + "..." : paperAbstract },
+                ],
             }
         ]
     } : null;
 
     // Use Gemini-generated card when available; swap to generic when toggled
-    const personalisedCard = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
+    const rawPersonalisedCard = allGeneratedCards ? allGeneratedCards[activeCardType] : baseCard;
+
+    // Auto-convert legacy layers (headline+body) to block format
+    function ensureBlocks(c: CardContent): CardContent {
+        return {
+            ...c,
+            layers: c.layers.map((layer) => {
+                if (layer.blocks && layer.blocks.length > 0) return layer;
+                // Legacy format: convert body+headline to blocks
+                if (layer.body) {
+                    const converted = legacyLayerToBlocks({
+                        label: layer.label,
+                        headline: layer.headline ?? null,
+                        body: layer.body,
+                    });
+                    return { ...layer, blocks: converted.blocks };
+                }
+                return layer;
+            }),
+        };
+    }
+
+    const personalisedCard = ensureBlocks(rawPersonalisedCard as CardContent);
     const card = showGeneric && genericCard ? genericCard : personalisedCard;
 
     const generateCardContent = async () => {
@@ -723,21 +757,45 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
             )}
 
             {/* Functional card — tapping opens full-screen reading view */}
-            <FeedPaperCard
-                id="functional-card"
-                title={card.layers[0]?.headline ?? paperTitle ?? "Your personalised paper"}
-                description={card.layers[0]?.body ? (card.layers[0].body.slice(0, 160).trimEnd() + (card.layers[0].body.length > 160 ? "…" : "")) : null}
-                source={sourceLabel}
-                sourceColor={sourceColor}
-                date={new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                readTime={activeCardType === "C" ? "15 min read" : activeCardType === "B" ? "10 min read" : "6 min read"}
-                gradientFrom="#0d1b2a"
-                gradientTo="#1b263b"
-                patternOpacity={0.2}
-                isLoading={isLoading && !allGeneratedCards}
-                isPlaceholder={false}
-                onTap={() => setIsExpanded(true)}
-            />
+            {(() => {
+                // Extract title and description from the first layer's blocks
+                const previewLayer = card.layers[0];
+                let feedTitle = paperTitle ?? "Your personalised paper";
+                let feedDesc: string | null = null;
+
+                if (previewLayer?.blocks) {
+                    const headingBlock = previewLayer.blocks.find((b: Block) => b.type === "heading");
+                    const paragraphBlock = previewLayer.blocks.find((b: Block) => b.type === "paragraph");
+                    if (headingBlock && headingBlock.type === "heading") feedTitle = headingBlock.text;
+                    if (paragraphBlock && paragraphBlock.type === "paragraph") {
+                        const t = paragraphBlock.text;
+                        feedDesc = t.length > 160 ? t.slice(0, 160).trimEnd() + "…" : t;
+                    }
+                } else if (previewLayer?.headline) {
+                    feedTitle = previewLayer.headline;
+                    if (previewLayer.body) {
+                        feedDesc = previewLayer.body.length > 160 ? previewLayer.body.slice(0, 160).trimEnd() + "…" : previewLayer.body;
+                    }
+                }
+
+                return (
+                    <FeedPaperCard
+                        id="functional-card"
+                        title={feedTitle}
+                        description={feedDesc}
+                        source={sourceLabel}
+                        sourceColor={sourceColor}
+                        date={new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        readTime={activeCardType === "C" ? "15 min read" : activeCardType === "B" ? "10 min read" : "6 min read"}
+                        gradientFrom="#0d1b2a"
+                        gradientTo="#1b263b"
+                        patternOpacity={0.2}
+                        isLoading={isLoading && !allGeneratedCards}
+                        isPlaceholder={false}
+                        onTap={() => setIsExpanded(true)}
+                    />
+                );
+            })()}
 
             {/* Placeholder cards */}
             {placeholderCards.map((pc) => (

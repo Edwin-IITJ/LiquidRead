@@ -3,42 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { logEvent } from "@/utils/logEvent";
 import { getSessionId } from "@/utils/sessionId";
-
-import StatCallout from "@/components/visuals/StatCallout";
-import ProportionStrip from "@/components/visuals/ProportionStrip";
-import DumbbellStrip from "@/components/visuals/DumbbellStrip";
-import ComparisonTable from "@/components/visuals/ComparisonTable";
-import SlopeStrip from "@/components/visuals/SlopeStrip";
-import StepDiagram from "@/components/visuals/StepDiagram";
-import RankStrip from "@/components/visuals/RankStrip";
+import type { Block } from "@/types/blocks";
+import BlockRenderer from "@/components/blocks/BlockRenderer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface VisualSpec {
-  visualType:
-    | "StatCallout"
-    | "ProportionStrip"
-    | "DumbbellStrip"
-    | "ComparisonTable"
-    | "SlopeStrip"
-    | "StepDiagram"
-    | "RankStrip";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any;
-  caption: string | null;
-}
-
-interface Section {
+interface BlockSection {
   label: string;
-  text: string;
-  visual: VisualSpec | null;
-  visualPosition: "above" | "below" | null;
+  blocks: Block[];
 }
 
 interface ExpandedData {
   hook: string;
   sectionOrder: string[];
-  sections: Record<string, Section>;
+  sections: Record<string, BlockSection>;
 }
 
 export interface ExpandedViewProps {
@@ -58,33 +36,12 @@ export interface ExpandedViewProps {
   comprehensionQuiz?: Array<{ question: string; options: string[]; correct: string; explanation: string }> | null;
   isGenericCard?: boolean;
   adjacentCards?: {
-    too_basic: Array<{ label: string; headline: string | null; body: string }> | null;
-    too_advanced: Array<{ label: string; headline: string | null; body: string }> | null;
+    too_basic: Array<{ label: string; headline?: string | null; body?: string; blocks?: Block[] }> | null;
+    too_advanced: Array<{ label: string; headline?: string | null; body?: string; blocks?: Block[] }> | null;
   } | null;
 }
 
-// ─── Visual renderer ──────────────────────────────────────────────────────────
-
-function renderVisual(visual: VisualSpec): React.ReactNode {
-  switch (visual.visualType) {
-    case "StatCallout":
-      return <StatCallout data={visual.data} caption={visual.caption} />;
-    case "ProportionStrip":
-      return <ProportionStrip data={visual.data} caption={visual.caption} />;
-    case "DumbbellStrip":
-      return <DumbbellStrip data={visual.data} caption={visual.caption} />;
-    case "ComparisonTable":
-      return <ComparisonTable data={visual.data} caption={visual.caption} />;
-    case "SlopeStrip":
-      return <SlopeStrip data={visual.data} caption={visual.caption} />;
-    case "StepDiagram":
-      return <StepDiagram data={visual.data} caption={visual.caption} />;
-    case "RankStrip":
-      return <RankStrip data={visual.data} caption={visual.caption} />;
-    default:
-      return null;
-  }
-}
+// Visual renderer removed — replaced by BlockRenderer
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -118,7 +75,7 @@ export default function ExpandedView({
 
   // Recalibration layer reader state
   const [recalibrationDone, setRecalibrationDone] = useState(false);
-  const [recalLayers, setRecalLayers] = useState<Array<{ label: string; headline: string | null; body: string }> | null>(null);
+  const [recalLayers, setRecalLayers] = useState<Array<{ label: string; headline?: string | null; body?: string; blocks?: Block[] }> | null>(null);
   const [recalLayerIdx, setRecalLayerIdx] = useState(0);
   // Second feedback form (shown after reading the adjusted card layers)
   const [recalSuitability, setRecalSuitability] = useState(0);
@@ -273,7 +230,7 @@ export default function ExpandedView({
             </div>
           )}
 
-          {/* Sections */}
+          {/* Sections — block-based rendering */}
           {!isLoading && !hasFailed && data && (
             <>
               {/* Hook */}
@@ -286,44 +243,30 @@ export default function ExpandedView({
                 </p>
               </div>
 
-              {/* Ordered sections */}
-              {data.sectionOrder.map((sectionId) => {
+              {/* Ordered sections rendered as blocks */}
+              {data.sectionOrder.map((sectionId, sectionIdx) => {
                 const section = data.sections[sectionId];
                 if (!section) return null;
 
-                const hasVisualAbove =
-                  !!section.visual && section.visualPosition === "above";
-                const hasVisualBelow =
-                  !!section.visual && section.visualPosition === "below";
-
                 return (
-                  <div key={sectionId}>
-                    {/* Label */}
-                    <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold mt-6 mb-2">
+                  <div key={sectionId} className="mt-6">
+                    <p className="blk-layer__label mb-2">
                       {section.label}
                     </p>
-
-                    {/* Visual above */}
-                    {hasVisualAbove && section.visual && (
-                      <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-1">
-                        {renderVisual(section.visual)}
-                      </div>
-                    )}
-
-                    {/* Body text */}
-                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line font-serif">
-                      {section.text}
-                    </p>
-
-                    {/* Visual below */}
-                    {hasVisualBelow && section.visual && (
-                      <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-1">
-                        {renderVisual(section.visual)}
-                      </div>
-                    )}
+                    <div className="blk-layer">
+                      {section.blocks.map((block, blockIdx) => (
+                        <BlockRenderer
+                          key={`${sectionId}-${blockIdx}`}
+                          block={block}
+                          index={sectionIdx * 4 + blockIdx}
+                          animate={true}
+                        />
+                      ))}
+                    </div>
                   </div>
                 );
               })}
+
               {/* DOI link */}
               {paperDoi && (
                 <a
@@ -487,14 +430,26 @@ export default function ExpandedView({
 
                         {recalLayers && recalLayers.slice(0, recalLayerIdx + 1).map((layer, idx) => (
                           <div key={idx} className={idx > 0 ? 'mt-5 pt-5 border-t border-slate-100' : ''}>
-                            {layer.headline && (
-                              <p className="text-base font-semibold text-slate-800 leading-snug mb-2">
-                                {layer.headline}
-                              </p>
+                            {layer.blocks && layer.blocks.length > 0 ? (
+                              <div className="blk-layer">
+                                {layer.blocks.map((block, bi) => (
+                                  <BlockRenderer key={bi} block={block} index={bi} animate={true} />
+                                ))}
+                              </div>
+                            ) : (
+                              <>
+                                {layer.headline && (
+                                  <p className="text-base font-semibold text-slate-800 leading-snug mb-2">
+                                    {layer.headline}
+                                  </p>
+                                )}
+                                {layer.body && (
+                                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                                    {layer.body}
+                                  </p>
+                                )}
+                              </>
                             )}
-                            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-                              {layer.body}
-                            </p>
                           </div>
                         ))}
 
