@@ -474,9 +474,9 @@ export async function POST(request: Request) {
       geminiResponse = await fetch(fallbackUrl, geminiOptions);
     }
 
-    if (!geminiResponse!.ok) {
-      const errorBody = await geminiResponse!.text();
-      console.error("RECAL: Gemini API error:", geminiResponse!.status, errorBody);
+    if (!geminiResponse || !geminiResponse.ok) {
+      const errorBody = await geminiResponse?.text();
+      console.error("RECAL: Gemini API error:", geminiResponse?.status, errorBody);
       return NextResponse.json({ error: "generation_failed" }, { status: 500 });
     }
 
