@@ -414,51 +414,41 @@ export async function POST(request: Request) {
       fieldGroup,
     });
 
-    // ── Try streaming first, fall back to non-streaming ───────────────────────
+    // ── Call Gemini (non-streaming) ──────────────────────────────────────────────
     let rawText: string;
     let diagnosticInfo: Record<string, unknown> = {};
 
-    try {
-      const result = await streamGeminiToText(apiKey, systemInstructionText, dynamicPrompt);
-      rawText = result.text;
-      diagnosticInfo = result.tokenInfo;
-      console.log("EXPANDED: streaming succeeded, text length:", rawText.length);
-    } catch (streamErr) {
-      console.warn("EXPANDED: streaming failed, falling back to non-streaming:", streamErr);
-
-      // Non-streaming fallback
-      const geminiResponse = await fetchGeminiWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemInstructionText }] },
-            contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 8192,
-              thinkingConfig: { thinkingBudget: 0 },
-            },
-          }),
-        }
-      );
-
-      if (!geminiResponse.ok) {
-        const errorBody = await geminiResponse.text();
-        console.error("EXPANDED: Gemini API error:", geminiResponse.status, errorBody);
-        return NextResponse.json({ error: "generation_failed" }, { status: 500 });
+    const geminiResponse = await fetchGeminiWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemInstructionText }] },
+          contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
       }
+    );
 
-      const geminiData = await geminiResponse.json();
-      const parts: Array<{ text?: string }> =
-        geminiData?.candidates?.[0]?.content?.parts ?? [];
-      rawText = parts
-        .filter((p) => p.text !== undefined)
-        .map((p) => p.text!)
-        .join("");
-      diagnosticInfo = geminiData?.usageMetadata ?? {};
+    if (!geminiResponse.ok) {
+      const errorBody = await geminiResponse.text();
+      console.error("EXPANDED: Gemini API error:", geminiResponse.status, errorBody);
+      return NextResponse.json({ error: "generation_failed" }, { status: 500 });
     }
+
+    const geminiData = await geminiResponse.json();
+    const parts: Array<{ text?: string }> =
+      geminiData?.candidates?.[0]?.content?.parts ?? [];
+    rawText = parts
+      .filter((p) => p.text !== undefined)
+      .map((p) => p.text!)
+      .join("");
+    diagnosticInfo = geminiData?.usageMetadata ?? {};
 
     console.log("EXPANDED GEMINI DIAGNOSTICS:", {
       rawTextLength: rawText?.length,
