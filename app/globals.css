@@ -97,9 +97,26 @@ body {
   gap: 4px;
 }
 
-.topbar-brand-image {
-  display: block;
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-left: 4px;
+  text-decoration: none;
+}
+
+.topbar-brand-mark {
+  display: block;
+  border-radius: 6px;
+}
+
+.topbar-brand-text {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--feed-text-primary, #2C2218);
+  letter-spacing: -0.01em;
+  line-height: 1;
 }
 
 .topbar-icon-btn {
@@ -128,6 +145,13 @@ body {
 
 .topbar-profile:hover {
   background: #dadce0;
+}
+
+/* ── Logo mark on intro / thank you screens ────────────────────────────────── */
+
+.intro-logo-mark {
+  display: block;
+  border-radius: 10px;
 }
 
 /* ── Tab Bar ───────────────────────────────────────────────────────────────── */

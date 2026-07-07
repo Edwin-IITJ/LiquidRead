@@ -19,14 +19,16 @@ export default function TopBar({ onMenuOpen }: TopBarProps) {
                     </svg>
                 </button>
 
-                <Image 
-                    src="/logo-full.png"
-                    alt="LiquidRead Logo"
-                    width={112}
-                    height={24}
-                    className="topbar-brand-image"
-                    style={{ objectFit: 'contain' }}
-                />
+                <div className="topbar-brand">
+                    <Image 
+                        src="/logo-full.png"
+                        alt="LiquidRead"
+                        width={28}
+                        height={28}
+                        className="topbar-brand-mark"
+                    />
+                    <span className="topbar-brand-text">LiquidRead</span>
+                </div>
             </div>
 
             <button
