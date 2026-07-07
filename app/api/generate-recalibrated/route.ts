@@ -433,10 +433,9 @@ export async function POST(request: Request) {
 
     const { systemInstructionText, dynamicPrompt } = buildRecalibratedPrompt(body);
 
-    // ── Gemini API call ────────────────────────────────────────────────────────
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
-      {
+    // ── Gemini API call (with retry + fallback) ─────────────────────────────────
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+    const geminiOptions: RequestInit = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -450,12 +449,34 @@ export async function POST(request: Request) {
             },
           },
         }),
-      }
-    );
+    };
 
-    if (!geminiResponse.ok) {
-      const errorBody = await geminiResponse.text();
-      console.error("RECAL: Gemini API error:", geminiResponse.status, errorBody);
+    let geminiResponse: Response | null = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      geminiResponse = await fetch(geminiUrl, geminiOptions);
+      if (geminiResponse.ok) break;
+
+      if (geminiResponse.status === 503 || geminiResponse.status === 429) {
+        if (attempt < 3) {
+          const waitMs = attempt === 1 ? 2000 : 4000;
+          console.log(`RECAL: Gemini ${geminiResponse.status} on attempt ${attempt} — retrying in ${waitMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitMs));
+          continue;
+        }
+      }
+      break;
+    }
+
+    // Fallback: if 3.5-flash failed after all retries, try 2.5-flash
+    if (geminiResponse && !geminiResponse.ok && (geminiResponse.status === 503 || geminiResponse.status === 429)) {
+      const fallbackUrl = geminiUrl.replace('gemini-3.5-flash', 'gemini-2.5-flash');
+      console.log('RECAL: Gemini 3.5-flash unavailable after 3 retries — falling back to 2.5-flash');
+      geminiResponse = await fetch(fallbackUrl, geminiOptions);
+    }
+
+    if (!geminiResponse!.ok) {
+      const errorBody = await geminiResponse!.text();
+      console.error("RECAL: Gemini API error:", geminiResponse!.status, errorBody);
       return NextResponse.json({ error: "generation_failed" }, { status: 500 });
     }
 

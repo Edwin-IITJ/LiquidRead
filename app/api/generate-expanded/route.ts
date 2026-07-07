@@ -264,29 +264,53 @@ async function streamGeminiToText(
   systemInstructionText: string,
   dynamicPrompt: string
 ): Promise<{ text: string; tokenInfo: Record<string, unknown> }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const primaryUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-  const res = await fetch(url, {
+  const requestBody = JSON.stringify({
+    system_instruction: { parts: [{ text: systemInstructionText }] },
+    contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
+  });
+  const fetchOptions: RequestInit = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemInstructionText }] },
-      contents: [{ role: "user", parts: [{ text: dynamicPrompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 8192,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    }),
-  });
+    body: requestBody,
+  };
 
-  if (!res.ok) {
-    const errorBody = await res.text();
-    throw new Error(`Gemini API error ${res.status}: ${errorBody.slice(0, 300)}`);
+  // Try 3.5-flash with 3 retries, then fallback to 2.5-flash
+  let res: Response | null = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    res = await fetch(primaryUrl, fetchOptions);
+    if (res.ok) break;
+
+    if (res.status === 503 || res.status === 429) {
+      if (attempt < 3) {
+        const waitMs = attempt === 1 ? 2000 : 4000;
+        console.log(`EXPANDED stream: Gemini ${res.status} on attempt ${attempt} — retrying in ${waitMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+        continue;
+      }
+    }
+    break;
+  }
+
+  if (res && !res.ok && (res.status === 503 || res.status === 429)) {
+    console.log('EXPANDED stream: Gemini 3.5-flash unavailable after 3 retries — falling back to 2.5-flash');
+    res = await fetch(fallbackUrl, fetchOptions);
+  }
+
+  if (!res!.ok) {
+    const errorBody = await res!.text();
+    throw new Error(`Gemini API error ${res!.status}: ${errorBody.slice(0, 300)}`);
   }
 
   // Read SSE stream and accumulate text
-  const reader = res.body?.getReader();
+  const reader = res!.body?.getReader();
   if (!reader) throw new Error("No response body from Gemini streaming");
 
   const decoder = new TextDecoder();
@@ -347,8 +371,21 @@ async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<
         continue;
       }
     }
-    return res;
+    break;
   }
+
+  // Fallback: if 3.5-flash failed after all retries, try 2.5-flash
+  if (res && !res.ok && (res.status === 503 || res.status === 429)) {
+    const fallbackUrl = url.replace('gemini-3.5-flash', 'gemini-2.5-flash');
+    if (fallbackUrl !== url) {
+      console.log('Gemini 3.5-flash unavailable after 3 retries — falling back to 2.5-flash');
+      const fallbackRes = await fetch(fallbackUrl, options);
+      if (fallbackRes.ok) return fallbackRes;
+      console.error(`Gemini 2.5-flash fallback also failed: ${fallbackRes.status}`);
+      return fallbackRes;
+    }
+  }
+
   return res!;
 }
 

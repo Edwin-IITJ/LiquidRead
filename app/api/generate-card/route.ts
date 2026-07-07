@@ -612,8 +612,21 @@ async function fetchGeminiWithRetry(url: string, options: RequestInit): Promise<
                 continue;
             }
         }
-        return res;
+        break;
     }
+
+    // Fallback: if 3.5-flash failed after all retries, try 2.5-flash
+    if (res && !res.ok && (res.status === 503 || res.status === 429)) {
+        const fallbackUrl = url.replace('gemini-3.5-flash', 'gemini-2.5-flash');
+        if (fallbackUrl !== url) {
+            console.log('Gemini 3.5-flash unavailable after 3 retries — falling back to 2.5-flash');
+            const fallbackRes = await fetch(fallbackUrl, options);
+            if (fallbackRes.ok) return fallbackRes;
+            console.error(`Gemini 2.5-flash fallback also failed: ${fallbackRes.status}`);
+            return fallbackRes;
+        }
+    }
+
     return res!;
 }
 
