@@ -1,5 +1,5 @@
 // GEMINI_API_KEY must be set in .env.local — never use NEXT_PUBLIC prefix
-// Uses gemini-2.5-flash — block-based generative UI output
+// Uses gemini-3.5-flash — block-based generative UI output
 
 import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
@@ -264,7 +264,7 @@ async function streamGeminiToText(
   systemInstructionText: string,
   dynamicPrompt: string
 ): Promise<{ text: string; tokenInfo: Record<string, unknown> }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -419,7 +419,7 @@ export async function POST(request: Request) {
     let diagnosticInfo: Record<string, unknown> = {};
 
     const geminiResponse = await fetchGeminiWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
