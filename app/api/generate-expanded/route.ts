@@ -259,6 +259,7 @@ Abstract: ${body.paperAbstract}`;
 // ─── Streaming helpers ───────────────────────────────────────────────────────
 
 /** Accumulate Gemini streaming chunks and return the complete text */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function streamGeminiToText(
   apiKey: string,
   systemInstructionText: string,
@@ -452,7 +453,6 @@ export async function POST(request: Request) {
     });
 
     // ── Call Gemini (non-streaming) ──────────────────────────────────────────────
-    let rawText: string;
     let diagnosticInfo: Record<string, unknown> = {};
 
     const geminiResponse = await fetchGeminiWithRetry(
@@ -481,7 +481,7 @@ export async function POST(request: Request) {
     const geminiData = await geminiResponse.json();
     const parts: Array<{ text?: string }> =
       geminiData?.candidates?.[0]?.content?.parts ?? [];
-    rawText = parts
+    const rawText = parts
       .filter((p) => p.text !== undefined)
       .map((p) => p.text!)
       .join("");

@@ -71,7 +71,6 @@ export default function PersonaPanel({
             setPersonaDraft(savedPersona);
         }
         if (savedContext) {
-            // eslint-disable-next-line
             setUserContext(savedContext);
         }
     }, []);
