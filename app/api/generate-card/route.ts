@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { jsonrepair } from 'jsonrepair';
-import { fieldMap, FieldGroup } from "@/utils/fieldMap";
+import { fieldMap, FieldGroup, buildFieldFilter } from "@/utils/fieldMap";
 import { reconstructAbstract } from "@/utils/reconstructAbstract";
 import { isValidBlock } from "@/types/blocks";
 // import allSubfields from "@/utils/subfieldMap"; // Commented out — subfield selection bypassed in favour of OpenAlex search=
