@@ -96,7 +96,7 @@ interface OpenAlexWork {
     }>;
 }
 
-async function fetchPaperFromOpenAlex(fieldGroup: string, researchInterest?: string | null): Promise<Paper> {
+async function fetchPaperFromOpenAlex(fieldGroup: string, researchInterest?: string | null, excludeTitles?: string[]): Promise<Paper> {
     const fieldId = fieldMap[fieldGroup as FieldGroup];
 
     // Determine the search term: prefer researchInterest; for "Other" fall back to fieldGroup text
@@ -119,7 +119,7 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, researchInterest?: str
         (searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : "") +
         sortString +
         `&select=title,abstract_inverted_index,publication_year,cited_by_count,doi,ids,primary_location,authorships` +
-        `&per_page=5` +
+        `&per_page=10` +
         `&mailto=${MAILTO}`;
 
     console.log('OPENALEX URL:', openAlexUrl);
@@ -151,8 +151,12 @@ async function fetchPaperFromOpenAlex(fieldGroup: string, researchInterest?: str
         return FALLBACK_PAPER;
     }
 
-    // Pick the top result by relevance (not random) when we have a search term
-    const work: OpenAlexWork = validResults[0];
+    // Filter out previously-seen papers (case-insensitive title match)
+    const excludeSet = new Set((excludeTitles ?? []).map((t: string) => t.toLowerCase().trim()));
+    const unseenResults = validResults.filter((w: OpenAlexWork) => !excludeSet.has((w.title ?? "").toLowerCase().trim()));
+
+    // Pick the top unseen result; fall back to top overall if all have been seen
+    const work: OpenAlexWork = unseenResults.length > 0 ? unseenResults[0] : validResults[0];
 
     const authorNames = (work.authorships ?? [])
         .slice(0, 3)
@@ -190,7 +194,7 @@ interface SemanticScholarPaper {
     authors?: Array<{ name?: string }> | null;
 }
 
-async function fetchPaperFromSemanticScholar(query: string, fieldGroup?: string): Promise<Paper | null> {
+async function fetchPaperFromSemanticScholar(query: string, fieldGroup?: string, excludeTitles?: string[]): Promise<Paper | null> {
     try {
         // Map fieldGroup to Semantic Scholar's fieldsOfStudy values
         const fieldOfStudyMap: Record<string, string> = {
@@ -231,8 +235,11 @@ async function fetchPaperFromSemanticScholar(query: string, fieldGroup?: string)
         const data = await response.json();
         const results: SemanticScholarPaper[] = data.data || [];
 
-        // Find the first result with a usable abstract
-        const validPaper = results.find(p => p.title && p.abstract && p.abstract.length >= 50);
+        // Find the first result with a usable abstract, skipping previously-seen papers
+        const excludeSet = new Set((excludeTitles ?? []).map(t => t.toLowerCase().trim()));
+        const validPaper = results.find(p => 
+            p.title && p.abstract && p.abstract.length >= 50 && !excludeSet.has(p.title.toLowerCase().trim())
+        ) ?? results.find(p => p.title && p.abstract && p.abstract.length >= 50);
         if (!validPaper) return null;
 
         const authorNames = (validPaper.authors ?? [])
@@ -636,7 +643,8 @@ export async function POST(request: Request) {
         const {
             fieldGroup,
             userProfile,
-        }: { fieldGroup: string; userProfile: UserProfile } = body;
+            excludeTitles,
+        }: { fieldGroup: string; userProfile: UserProfile; excludeTitles?: string[] } = body;
 
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
@@ -647,7 +655,7 @@ export async function POST(request: Request) {
         // Step 1 — Fetch a relevant paper from OpenAlex (using search= with the user's research interest)
         let paper: Paper;
         try {
-            paper = await fetchPaperFromOpenAlex(fieldGroup, userProfile.researchInterest);
+            paper = await fetchPaperFromOpenAlex(fieldGroup, userProfile.researchInterest, excludeTitles);
         } catch {
             console.warn("OpenAlex fetch failed, using FALLBACK_PAPER");
             paper = FALLBACK_PAPER;
@@ -657,7 +665,7 @@ export async function POST(request: Request) {
         const searchQuery = userProfile.researchInterest?.trim() || fieldGroup;
         if (paper === FALLBACK_PAPER && searchQuery) {
             console.log('OpenAlex returned no results, trying Semantic Scholar fallback...');
-            const ssPaper = await fetchPaperFromSemanticScholar(searchQuery, fieldGroup);
+            const ssPaper = await fetchPaperFromSemanticScholar(searchQuery, fieldGroup, excludeTitles);
             if (ssPaper) {
                 console.log('Semantic Scholar fallback succeeded:', ssPaper.title);
                 paper = ssPaper;

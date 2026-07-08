@@ -23,6 +23,7 @@ interface FeedShellProps {
         openFeedback: string,
         paperTitle: string
     ) => void;
+    excludeTitles?: string[];
 }
 
 const TABS = ["For You", "Impact", "Relevant"] as const;
@@ -38,6 +39,7 @@ export default function FeedShell({
     confusionResponse,
     normalisedScore,
     onProceed,
+    excludeTitles,
 }: FeedShellProps) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("For You");
@@ -75,6 +77,7 @@ export default function FeedShell({
                     confusionResponse={confusionResponse}
                     normalisedScore={normalisedScore}
                     onProceed={onProceed}
+                    excludeTitles={excludeTitles}
                 />
             </main>
 

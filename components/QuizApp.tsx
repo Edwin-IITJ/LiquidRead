@@ -39,7 +39,19 @@ const initialState: QuizState = {
     openFeedback: "",
     paperTitle: "",
     generatedCardText: "",
+    paperCount: 0,
+    seenPaperTitles: [],
 };
+
+// Ensure persisted state includes fields added after initial deployment
+function withDefaults(parsed: Record<string, unknown>): QuizState {
+    return {
+        ...initialState,
+        ...parsed,
+        paperCount: typeof parsed.paperCount === "number" ? parsed.paperCount : 0,
+        seenPaperTitles: Array.isArray(parsed.seenPaperTitles) ? parsed.seenPaperTitles as string[] : [],
+    } as QuizState;
+}
 
 // ── Ari response map: keyed by questionId → optionId ──────────────────────────
 const ARI_RESPONSES: Record<string, Record<string, string>> = {
@@ -169,9 +181,19 @@ export default function QuizApp() {
     // Restore persisted state; redirect any stale old-style sessions to fresh onboarding
     useEffect(() => {
         if (typeof window === "undefined") return;
+        // Legacy permanent lock — convert to reusable profile
         if (localStorage.getItem("mtp-survey-done") === "true") {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setState((s) => ({ ...s, appState: "thankyou" }));
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
+                    setState((s) => ({ ...s, ...withDefaults(parsed), appState: "card" }));
+                    return;
+                } catch { /* fall through */ }
+            }
+            // No saved profile — restart onboarding
+            localStorage.removeItem("mtp-survey-done");
             return;
         }
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -181,8 +203,11 @@ export default function QuizApp() {
                 if (STALE_STATES.includes(parsed.appState)) {
                     // Old session — restart cleanly
                     localStorage.removeItem(STORAGE_KEY);
+                } else if (parsed.appState === "thankyou") {
+                    // User was on thank-you — send them back to the feed
+                    setState(withDefaults({ ...parsed, appState: "card" }));
                 } else {
-                    setState(parsed);
+                    setState(withDefaults(parsed));
                 }
             } catch (e) {
                 console.error("Failed to parse saved survey state", e);
@@ -290,11 +315,27 @@ export default function QuizApp() {
         };
 
         await submitToSheet(payload);
-        if (typeof window !== "undefined") {
-            localStorage.setItem("mtp-survey-done", "true");
-            localStorage.removeItem(STORAGE_KEY);
-        }
-        setState((s) => ({ ...s, appState: "thankyou" }));
+        // Track the paper for deduplication; do NOT permanently lock the app
+        setState((s) => ({
+            ...s,
+            appState: "thankyou",
+            paperCount: (s.paperCount ?? 0) + 1,
+            seenPaperTitles: [...(s.seenPaperTitles ?? []), paperTitle],
+        }));
+    }
+
+    // ── Explore more: return to feed with a fresh paper ──────────────────────
+    function handleExploreMore() {
+        // Bump refreshKey by re-entering card state; CardDisplay will re-mount
+        setState((s) => ({ ...s, appState: "card" }));
+    }
+
+    function handleChangeTopic() {
+        setState((s) => ({ ...s, appState: "explore" }));
+    }
+
+    function handleTopicConfirm(newTopic: string) {
+        setState((s) => ({ ...s, field: newTopic, appState: "card" }));
     }
 
     // ── Render: post-onboarding states (UNTOUCHED) ────────────────────────────
@@ -302,12 +343,73 @@ export default function QuizApp() {
     if (state.appState === "scoring") return null;
 
     if (state.appState === "thankyou") {
-        return <QuizWrapper><ThankYou /></QuizWrapper>;
+        return (
+            <QuizWrapper>
+                <ThankYou
+                    paperCount={state.paperCount}
+                    onExploreMore={handleExploreMore}
+                    onChangeTopic={handleChangeTopic}
+                />
+            </QuizWrapper>
+        );
+    }
+
+    if (state.appState === "explore") {
+        return (
+            <QuizWrapper>
+                <div className="flex flex-col gap-0 fade-in">
+                    <button
+                        onClick={() => setState((s) => ({ ...s, appState: "thankyou" }))}
+                        className="text-[#9C8B78] text-sm hover:text-[#6B5C4A] transition-colors flex items-center gap-1 mb-6"
+                    >
+                        ← Back
+                    </button>
+
+                    <h2 className="text-2xl font-semibold text-[#2C2218] leading-snug mb-2">
+                        What are you curious about next?
+                    </h2>
+                    <p className="text-sm text-[#6B5C4A] leading-relaxed mb-6">
+                        Enter a topic and I&apos;ll find a relevant paper shaped for you.
+                    </p>
+
+                    {/* Ari line */}
+                    <div className="flex items-start gap-2.5 mb-8">
+                        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-[#EDE5D8] flex items-center justify-center">
+                            <span className="text-[#7C5C3E] text-[9px] font-bold leading-none">A</span>
+                        </span>
+                        <p className="text-[#6B5C4A] text-sm italic">
+                            Your reading profile stays the same. Only the paper changes.
+                        </p>
+                    </div>
+
+                    <input
+                        type="text"
+                        defaultValue={state.field}
+                        onChange={(e) => setState((s) => ({ ...s, field: e.target.value }))}
+                        placeholder="e.g. sleep and memory consolidation"
+                        className="w-full rounded-xl border border-[#DDD5C8] bg-white px-4 py-3 text-[#2C2218] placeholder-[#B5A898] focus:outline-none focus:border-[#7C5C3E] focus:ring-2 focus:ring-[#EDE5D8] transition-all text-sm mb-6"
+                    />
+
+                    <button
+                        onClick={() => handleTopicConfirm(state.field)}
+                        disabled={state.field.trim().length === 0}
+                        className={`w-full sm:w-auto rounded-xl px-8 py-3 text-sm font-medium transition-colors
+                            ${state.field.trim().length > 0
+                                ? "bg-[#7C5C3E] hover:bg-[#6A4E34] active:bg-[#5A4028] text-white cursor-pointer"
+                                : "bg-[#EDE5D8] text-[#9C8B78] cursor-not-allowed"
+                            }`}
+                    >
+                        Find a paper →
+                    </button>
+                </div>
+            </QuizWrapper>
+        );
     }
 
     if (state.appState === "card") {
         return (
             <FeedShell
+                key={`feed-${state.paperCount}`}
                 cardType={state.cardShown}
                 fieldGroup={state.fieldGroup || "default"}
                 readingComfort={state.answers.q1?.label}
@@ -318,6 +420,7 @@ export default function QuizApp() {
                 confusionResponse={state.answers.q1?.label}
                 normalisedScore={state.normalisedScore}
                 onProceed={handleCardProceed}
+                excludeTitles={state.seenPaperTitles}
             />
         );
     }

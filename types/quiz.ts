@@ -1,6 +1,6 @@
 // 'intro' | 'demographics' | 'questions' are kept for type safety but are dead routes in the app.
 // All onboarding now flows through 'onboarding'.
-export type AppState = 'intro' | 'demographics' | 'questions' | 'onboarding' | 'scoring' | 'card' | 'reflection' | 'feedback' | 'thankyou';
+export type AppState = 'intro' | 'demographics' | 'questions' | 'onboarding' | 'scoring' | 'card' | 'reflection' | 'feedback' | 'thankyou' | 'explore';
 
 export type CardType = 'A' | 'B' | 'C';
 
@@ -46,6 +46,8 @@ export interface QuizState {
   priorInterviewName: string;
   paperTitle: string;
   generatedCardText: string;
+  paperCount: number;           // how many papers explored this session
+  seenPaperTitles: string[];    // titles of papers already shown (for deduplication)
 }
 
 export interface SheetPayload {

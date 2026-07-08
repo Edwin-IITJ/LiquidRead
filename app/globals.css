@@ -45,6 +45,27 @@ body {
   animation: fadeIn 0.25s ease-out forwards;
 }
 
+/* ThankYou check pop-in */
+@keyframes checkPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.thankyou-check {
+  animation: checkPop 0.4s ease-out 0.15s forwards;
+  opacity: 0;
+}
+
 @keyframes scaleFadeIn {
   from {
     opacity: 0;

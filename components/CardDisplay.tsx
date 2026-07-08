@@ -21,6 +21,7 @@ interface CardDisplayProps {
     confusionResponse?: string;
     normalisedScore?: number;
     onProceed: (suitability: number, calibration: 'too_basic' | 'just_right' | 'too_advanced', openFeedback: string, paperTitle: string) => void;
+    excludeTitles?: string[];
 }
 
 // ─── Card Content ────────────────────────────────────────────────────────────
@@ -558,7 +559,7 @@ function mapTrustAnchor(q9Answer: string | undefined): string {
     return "What they found";
 }
 
-export default function CardDisplay({ cardType, fieldGroup, readingComfort, readingGoal, timeAvailable, trustAnchor, researchInterest, confusionResponse, normalisedScore, onProceed }: CardDisplayProps) {
+export default function CardDisplay({ cardType, fieldGroup, readingComfort, readingGoal, timeAvailable, trustAnchor, researchInterest, confusionResponse, normalisedScore, onProceed, excludeTitles }: CardDisplayProps) {
     // AI-generated card state
     type CardContent = {
         maxLayer: number;
@@ -668,11 +669,14 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                         userPersona: savedPersona ?? generatedPersona,
                         userContext: savedContext ?? "",
                     },
+                    excludeTitles: excludeTitles ?? [],
                 }),
             });
             if (!res.ok) {
                 setAllGeneratedCards(DEFAULT_PAPER as typeof allGeneratedCards);
                 setIsFallback(true);
+                setPaperTitle("Nonlinear dynamics of multi-omics profiles during human aging");
+                setPaperAbstract("108 adults aged 25-75 were tracked for up to 6.8 years. Of 11,305 molecular features analysed, only 6.6% changed linearly with age. 81% changed nonlinearly, in sudden bursts.");
                 setIsLoading(false);
                 return;
             }
@@ -716,6 +720,8 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
         } catch {
             setAllGeneratedCards(DEFAULT_PAPER as typeof allGeneratedCards);
             setIsFallback(true);
+            setPaperTitle("Nonlinear dynamics of multi-omics profiles during human aging");
+            setPaperAbstract("108 adults aged 25-75 were tracked for up to 6.8 years. Of 11,305 molecular features analysed, only 6.6% changed linearly with age. 81% changed nonlinearly, in sudden bursts.");
         } finally {
             setIsLoading(false);
         }

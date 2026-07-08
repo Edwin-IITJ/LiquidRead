@@ -2,7 +2,7 @@
 
 > **Research papers, personalised to how you read.**
 
-LiquidRead is an intelligent research calibration application that adapts dense academic papers into dynamic, personalised summaries based on the user's technical background, reading constraints, and goals. It fetches real peer-reviewed papers via **OpenAlex**, translates them through **Google Gemini 2.5**, and presents them at three calibrated depth levels — without losing the core statistical findings or credibility.
+LiquidRead is an intelligent research calibration application that enables **epistemic personalisation of research papers through generative UI to help the curious stay up to date with the latest research**. It adapts dense academic papers into dynamic, personalised summaries based on the user's technical background, reading constraints, and goals. It fetches real peer-reviewed papers via **OpenAlex**, translates them through **Google Gemini 2.5**, and presents them at three calibrated depth levels — without losing the core statistical findings or credibility.
 
 This README is the complete replication guide. It is written so that another team — developers, designers, researchers, or project managers — can rebuild this application from scratch.
 
@@ -1168,7 +1168,7 @@ This application is built as a research instrument for studying how personalised
 
 ### Current Limitations
 
-1. **Single-page study mode**: The app functions as a one-shot study instrument. Once submitted, the user sees only a thank-you screen. No re-entry to explore more papers.
+1. ~~**Single-page study mode**~~: *(Fixed)* Users can now explore multiple papers after feedback. A "Explore another paper" CTA appears on the thank-you screen, and users can optionally change their research topic. Paper deduplication prevents repeats.
 2. **No authentication**: No user accounts. Session tracking is via localStorage UUIDs.
 3. **Feed is static**: Only the "For You" tab is active. "Impact" and "Relevant" tabs are placeholders.
 4. **Navigation is decorative**: BottomNavBar buttons (Bookmarks, Favorites) have no functionality.
@@ -1179,7 +1179,7 @@ This application is built as a research instrument for studying how personalised
 
 ### Potential Extensions
 
-- Multi-paper feed with real-time paper discovery
+- ~~Multi-paper feed with real-time paper discovery~~ *(Implemented — users can explore multiple papers per session)*
 - User accounts with reading history and preference learning
 - Bookmarking and saving papers
 - Social features (sharing, discussions)
