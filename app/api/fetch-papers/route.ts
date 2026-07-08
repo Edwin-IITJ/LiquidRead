@@ -1,7 +1,7 @@
 // API route that fetches and formats recent open-access academic papers from OpenAlex by academic field.
 
 import { NextResponse } from "next/server";
-import { fieldMap, FieldGroup } from "@/utils/fieldMap";
+import { fieldMap, FieldGroup, buildFieldFilter } from "@/utils/fieldMap";
 import { reconstructAbstract } from "@/utils/reconstructAbstract";
 
 const MAILTO = "edwinmeleth@gmail.com";
@@ -28,11 +28,12 @@ export async function GET(request: Request) {
         // Build the filter string
         let filterString: string;
         let sortString: string;
-        const fieldId = fieldMap[fieldGroupParam as FieldGroup];
+        const fieldValue = fieldMap[fieldGroupParam as FieldGroup];
+        const fieldFilter = buildFieldFilter(fieldValue);
 
-        if (fieldId !== null && fieldId !== undefined) {
-            // Known field with a valid OpenAlex ID
-            filterString = `${BASE_FILTERS},topics.field.id:${fieldId}`;
+        if (fieldFilter) {
+            // Known field with a valid OpenAlex ID(s)
+            filterString = `${BASE_FILTERS},${fieldFilter}`;
             sortString = "&sort=cited_by_count:desc";
         } else {
             // "Other" or unknown field — use free-text search, no field filter
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
         const openAlexUrl =
             `https://api.openalex.org/works` +
             `?filter=${filterString}` +
-            (fieldId === null ? `&search=${encodeURIComponent(fieldGroupParam)}` : "") +
+            (!fieldFilter ? `&search=${encodeURIComponent(fieldGroupParam)}` : "") +
             sortString +
             `&select=id,title,abstract_inverted_index,authorships,publication_year,cited_by_count,doi,primary_location,primary_topic` +
             `&per_page=5` +

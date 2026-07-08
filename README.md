@@ -1174,7 +1174,7 @@ This application is built as a research instrument for studying how personalised
 4. **Navigation is decorative**: BottomNavBar buttons (Bookmarks, Favorites) have no functionality.
 5. **Field-specific fallback papers**: Only 6 fields have hardcoded fallback content. Humanities lacks a dedicated fallback paper (uses the default aging study).
 6. **Full text retrieval**: Depends on papers having PMC IDs. Many papers do not.
-7. **OpenAlex coverage**: The `Sciences` field group maps to Computer Science (field ID 17), which is not representative of all sciences.
+7. ~~**OpenAlex coverage**~~: *(Fixed)* The `Sciences` field group previously mapped to Computer Science (field ID 17). It now maps broadly across Physics, Chemistry, Biology, Environmental Science, Mathematics, Earth Sciences, and Materials Science.
 8. **Single language**: English only.
 
 ### Potential Extensions

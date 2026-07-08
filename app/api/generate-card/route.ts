@@ -97,18 +97,14 @@ interface OpenAlexWork {
 }
 
 async function fetchPaperFromOpenAlex(fieldGroup: string, researchInterest?: string | null, excludeTitles?: string[]): Promise<Paper> {
-    const fieldId = fieldMap[fieldGroup as FieldGroup];
+    const fieldValue = fieldMap[fieldGroup as FieldGroup];
 
     // Determine the search term: prefer researchInterest; for "Other" fall back to fieldGroup text
-    const searchTerm = researchInterest?.trim() || (fieldId === null || fieldId === undefined ? fieldGroup : null);
+    const searchTerm = researchInterest?.trim() || (fieldValue === null || fieldValue === undefined ? fieldGroup : null);
 
-    // Build filter — always use field-level (not subfield) when we have a known field
-    let filterString: string;
-    if (fieldId !== null && fieldId !== undefined) {
-        filterString = `${BASE_FILTERS},topics.field.id:${fieldId}`;
-    } else {
-        filterString = BASE_FILTERS;
-    }
+    // Build filter using the helper function
+    const fieldFilter = buildFieldFilter(fieldValue);
+    const filterString = fieldFilter ? `${BASE_FILTERS},${fieldFilter}` : BASE_FILTERS;
 
     // Sort by relevance when we have a search term, otherwise by citation count
     const sortString = searchTerm ? "&sort=relevance_score:desc" : "&sort=cited_by_count:desc";
@@ -197,10 +193,11 @@ interface SemanticScholarPaper {
 async function fetchPaperFromSemanticScholar(query: string, fieldGroup?: string, excludeTitles?: string[]): Promise<Paper | null> {
     try {
         // Map fieldGroup to Semantic Scholar's fieldsOfStudy values
+        // Semantic Scholar supports a comma-separated list of fields.
         const fieldOfStudyMap: Record<string, string> = {
             Design: "Computer Science",
             Engineering: "Engineering",
-            Sciences: "Physics",
+            Sciences: "Physics,Chemistry,Biology,Mathematics,Environmental Science,Materials Science",
             "Social Sciences": "Sociology",
             Humanities: "Philosophy",
             Medicine: "Medicine",
