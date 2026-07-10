@@ -267,17 +267,37 @@ export default function ExpandedView({
                 );
               })}
 
-              {/* DOI link */}
+              {/* DOI link + copy button */}
               {paperDoi && (
-                <a
-                  href={`https://doi.org/${paperDoi}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-500 transition-colors mt-6 mb-2"
-                >
-                  <span>📄</span>
-                  <span>Read the original paper</span>
-                </a>
+                <div className="expanded-view-doi-row">
+                  <a
+                    href={`https://doi.org/${paperDoi}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="expanded-view-doi-link"
+                  >
+                    <span>📄</span>
+                    <span>Read the original paper</span>
+                  </a>
+                  <button
+                    className="expanded-view-doi-copy"
+                    aria-label="Copy DOI link"
+                    title="Copy DOI link"
+                    onClick={async (e) => {
+                      const btn = e.currentTarget;
+                      try {
+                        await navigator.clipboard.writeText(`https://doi.org/${paperDoi}`);
+                        btn.dataset.copied = "true";
+                        setTimeout(() => { btn.dataset.copied = "false"; }, 2000);
+                      } catch { /* noop */ }
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                    </svg>
+                  </button>
+                </div>
               )}
 
               {/* Comprehension quiz — shown between content and feedback */}

@@ -26,6 +26,14 @@ export interface FeedPaperCardProps {
     isPlaceholder?: boolean;
     /** Called when user taps to read */
     onTap?: () => void;
+    /** Hero stat displayed in the gradient area (e.g. citation count) */
+    heroStat?: string | null;
+    /** Label for the hero stat (e.g. "citations") */
+    heroStatLabel?: string | null;
+    /** Contextual label at top of card (e.g. "📊 Highest impact") */
+    topLabel?: string | null;
+    /** Whether this card is epistemically personalised */
+    isPersonalised?: boolean;
 }
 
 function CardSkeleton() {
@@ -59,6 +67,10 @@ export default function FeedPaperCard({
     isLoading = false,
     isPlaceholder = false,
     onTap,
+    heroStat,
+    heroStatLabel,
+    topLabel,
+    isPersonalised = false,
 }: FeedPaperCardProps) {
     if (isLoading) return <CardSkeleton />;
 
@@ -116,20 +128,39 @@ export default function FeedPaperCard({
                     <line x1="50" y1="150" x2="120" y2="120" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
                     <circle cx="80" cy="60" r="12" fill="url(#rg-${gradientFrom.replace('#','')})" />
                     <circle cx="220" cy="80" r="16" fill="url(#rg-${gradientFrom.replace('#','')})" />
-                    <circle cx="260" cy="140" r="14" fill="url(#rg-${gradientFrom.replace('#','')})" />
+                    <circle cx="260" cy="140" r="14" fill={`url(#rg-${gradientFrom.replace('#','')})`} />
                 </svg>
+                {/* Hero stat overlay (e.g. citation count for Impact tab) */}
+                {heroStat && (
+                    <div className="feed-card-hero-stat">
+                        <span className="feed-card-hero-stat-value">{heroStat}</span>
+                        {heroStatLabel && (
+                            <span className="feed-card-hero-stat-label">{heroStatLabel}</span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Card body */}
             <div className="feed-card-body">
-                {/* Source + overflow menu */}
+                {/* Top label (e.g. "📊 Highest impact" or "🔍 Matching...") */}
+                {topLabel && (
+                    <span className="feed-card-top-label">{topLabel}</span>
+                )}
+
+                {/* Source + personalised badge + overflow menu */}
                 <div className="feed-card-source-row">
-                    <span
-                        className="feed-card-source"
-                        style={{ color: sourceColor }}
-                    >
-                        {source}
-                    </span>
+                    <div className="feed-card-source-group">
+                        <span
+                            className="feed-card-source"
+                            style={{ color: sourceColor }}
+                        >
+                            {source}
+                        </span>
+                        {isPersonalised && (
+                            <span className="feed-card-personalised-badge">✨ Personalised</span>
+                        )}
+                    </div>
                     <button
                         className="feed-card-menu"
                         aria-label="More options"

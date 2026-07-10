@@ -805,6 +805,7 @@ export default function CardDisplay({ cardType, fieldGroup, readingComfort, read
                         patternOpacity={0.2}
                         isLoading={isLoading && !allGeneratedCards}
                         isPlaceholder={false}
+                        isPersonalised={true}
                         onTap={() => setIsExpanded(true)}
                     />
                 );

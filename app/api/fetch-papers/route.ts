@@ -17,6 +17,9 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const fieldGroupParam = searchParams.get("fieldGroup");
+        const searchQuery = searchParams.get("search");       // free-text search for Relevant tab
+        const perPageParam = searchParams.get("perPage");     // configurable page size
+        const perPage = Math.min(Math.max(parseInt(perPageParam ?? "5", 10) || 5, 1), 15);
 
         if (!fieldGroupParam) {
             return NextResponse.json(
@@ -31,7 +34,11 @@ export async function GET(request: Request) {
         const fieldValue = fieldMap[fieldGroupParam as FieldGroup];
         const fieldFilter = buildFieldFilter(fieldValue);
 
-        if (fieldFilter) {
+        if (searchQuery) {
+            // Explicit search query (e.g. Relevant tab) — combine with field filter if available
+            filterString = fieldFilter ? `${BASE_FILTERS},${fieldFilter}` : BASE_FILTERS;
+            sortString = "&sort=relevance_score:desc";
+        } else if (fieldFilter) {
             // Known field with a valid OpenAlex ID(s)
             filterString = `${BASE_FILTERS},${fieldFilter}`;
             sortString = "&sort=cited_by_count:desc";
@@ -41,14 +48,19 @@ export async function GET(request: Request) {
             sortString = "&sort=relevance_score:desc";
         }
 
+        // Determine the search= clause
+        const searchClause = searchQuery
+            ? `&search=${encodeURIComponent(searchQuery)}`
+            : (!fieldFilter ? `&search=${encodeURIComponent(fieldGroupParam)}` : "");
+
         // Build the full OpenAlex URL
         const openAlexUrl =
             `https://api.openalex.org/works` +
             `?filter=${filterString}` +
-            (!fieldFilter ? `&search=${encodeURIComponent(fieldGroupParam)}` : "") +
+            searchClause +
             sortString +
             `&select=id,title,abstract_inverted_index,authorships,publication_year,cited_by_count,doi,primary_location,primary_topic` +
-            `&per_page=5` +
+            `&per_page=${perPage}` +
             `&mailto=${MAILTO}`;
 
         // Log the URL for debugging
